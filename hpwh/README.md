@@ -6,7 +6,7 @@ A complete, 24-hour lifecycle management system for Heat Pump Water Heaters (suc
 
 ## The Challenge
 
-To avoid draining home battery storage or drawing grid power overnight, the heat pump's setpoint is lowered to 120°F in the evening (16:00 PM), relying on the tank as a pre-charged thermal battery.
+To avoid draining home battery storage or drawing grid power overnight, the heat pump's setpoint is lowered to 120°F in the evening (4:00 PM), relying on the tank as a pre-charged thermal battery.
 
 However, occasional heavy evening water usage (e.g. late showers, baths, or dishwashing) introduces severe **thermal stratification**:
 * Cold municipal water enters the bottom of the tank via the dip tube, displacing hot water in the lower ~60% of the volume.
@@ -26,9 +26,9 @@ However, occasional heavy evening water usage (e.g. late showers, baths, or dish
 
 1. **Early Morning Assurance (06:30 AM default check):** Evaluates the lower tank temperature well before morning showers. If depleted (< 102°F), it calculates a dynamic overdrive setpoint (`upper + 4°F`, up to 140°F) to force the compressor on, runs until the lower tank reaches a safe reserve (112°F), and resets back to baseline—guaranteeing recovery completes before shower time.
 2. **Daytime Solar Soak (10:00 AM):** Checks today's solar PV forecast. If high (> 25 kWh), boosts setpoint to 140°F to store free solar energy as thermal storage. If low, maintains a reliable 125°F baseline.
-3. **Evening Reset (16:00 PM):** Drops setpoint to 120°F to prevent the compressor from cycling overnight on home battery storage or grid power, treating the water heater as a pre-charged thermal battery.
+3. **Evening Reset (4:00 PM):** Drops setpoint to 120°F to prevent the compressor from cycling overnight on home battery storage or grid power, treating the water heater as a pre-charged thermal battery.
 4. **Native Logbook Integration:** Automatically logs every setpoint change and trigger event to Home Assistant's native Logbook with zero helpers or setup required.
-5. **(Optional) True State of Charge (SoC):** A 40/60 volumetric weighted thermal storage sensor that tracks real usable energy and estimated shower gallons.
+5. **(Optional) True State of Charge (SoC):** A 40/60 volumetric weighted thermal storage sensor that tracks real usable energy, shower minutes (at 2.0 GPM), and usable gallons.
 6. **(Optional) Native Dashboard Card:** A complete, glanceable Lovelace card with SoC gauge, operating status, tank temperatures, and live event log.
 
 ---
@@ -38,7 +38,7 @@ However, occasional heavy evening water usage (e.g. late showers, baths, or dish
 | File | Type | Description |
 | :--- | :--- | :--- |
 | [`blueprint.yaml`](blueprint.yaml) | **Core Automation** | Automation blueprint for the 24-hr manager. Zero helpers or extra sensors required. |
-| [`templates.yaml`](templates.yaml) | *Optional Monitoring* | Template sensor computing State of Charge (0–135%), thermal spread, and shower gallons. |
+| [`templates.yaml`](templates.yaml) | *Optional Monitoring* | Template sensor computing State of Charge (0–135%), thermal spread, shower minutes, and gallons. |
 | [`hpwh-card.js`](hpwh-card.js) | *Custom UI Card* | Compact Lovelace card with battery dial, glance metrics, and visual GUI dialog. |
 | [`dashboard.yaml`](dashboard.yaml) | *Native YAML Card* | Standard Lovelace YAML configuration using built-in Home Assistant cards. |
 
@@ -83,7 +83,7 @@ Then reload blueprints under **Developer Tools > YAML > Automations**.
 
 ## Optional: Visual Monitoring & Dashboard
 
-If you'd like a visual dashboard with a thermal battery gauge, stratification spread, and shower gallon estimates:
+If you'd like a visual dashboard with a thermal battery gauge, stratification spread, shower minutes, and gallon estimates:
 
 ### Step 2: Install the State of Charge (SoC) Sensor
 
@@ -107,7 +107,7 @@ You can choose between the **Dedicated Custom UI Card** (with a visual graphical
 
 #### Option A: Dedicated Custom UI Card (Recommended — Visual Dialog)
 
-This card provides an ultra-compact layout with an SVG battery dial, glance metrics, boost buttons, and a **100% visual configuration dialog** (dropdown entity pickers).
+This card provides an ultra-compact layout with an SVG battery dial, glance metrics (supporting both **Shower Minutes** and **Gallons**), boost buttons, and a **100% visual configuration dialog** (dropdown entity pickers).
 
 ##### 1. Install the Card:
 1. Download [`hpwh-card.js`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js) into your Home Assistant directory at `/config/www/hpwh-card.js`:
