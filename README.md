@@ -13,8 +13,8 @@ A complete package for 24-hour lifecycle management of Heat Pump Water Heaters (
 2. **True State of Charge (SoC) Template Sensor:** [`templates/water_heater_soc.yaml`](templates/water_heater_soc.yaml)
 
 ### Prerequisites & Integrations
-- **[esphome-econet](https://github.com/esphome-econet/esphome-econet):** Local RS-485 interface for Rheem / Ruud EcoNet water heaters.
-- **[Solcast Solar Integration](https://github.com/BJReplay/ha-solcast-solar):** Provides daily solar production forecasts in kWh.
+- **Water Heater Integration:** Any heat pump water heater with climate and tank temperature entities (e.g., [esphome-econet](https://github.com/esphome-econet/esphome-econet) for Rheem/Ruud units).
+- **Solar Production Forecast:** Any sensor providing today's estimated solar PV generation in kWh (common options include [Solcast](https://github.com/BJReplay/ha-solcast-solar), [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/), or custom templates).
 - **Thermostatic Mixing Valve:** Installed at the tank hot water outlet to safely temper 140°F storage water down to fixture temperatures.
 - **[Home Assistant Blueprints](https://www.home-assistant.io/docs/blueprint/):** Official documentation on importing and configuring automation blueprints.
 

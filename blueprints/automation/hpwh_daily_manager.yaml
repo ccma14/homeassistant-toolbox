@@ -35,7 +35,7 @@ blueprint:
 
     solar_forecast_sensor:
       name: "Solar Forecast Sensor"
-      description: "Sensor providing today's solar PV forecast in kWh (e.g. Solcast)."
+      description: "Sensor providing today's solar PV forecast in kWh (e.g. Solcast, Forecast.Solar, or custom template)."
       selector:
         entity:
           domain: sensor
