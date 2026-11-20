@@ -11,8 +11,8 @@ Each solution is packaged in its own self-contained directory with dedicated set
 | Solution | Status | Description | Link |
 | :--- | :--- | :--- | :--- |
 | **♨️ Heat Pump Water Heater Manager** | `Stable` | Overcomes tank thermal stratification, pre-heats with solar PV forecast, tracks true volumetric State of Charge (SoC), and provides glanceable dashboard controls. | [**Explore `hpwh/`**](hpwh/) |
+| **❄️ ESPHome Mini-Split IR Thermostat** | `External Repo` | ESPHome package for Midea/Coolix-compatible mini-splits using external Home Assistant sensors and adaptive "Follow Me" temperature compensation. | [**ccma14/esphome-ir-thermostat ↗**](https://github.com/ccma14/esphome-ir-thermostat) |
 | **⚡ Smart EV Solar Charging** | `Planned` | Dynamically throttles EV charging current based on real-time solar surplus and utility time-of-use (TOU) export rates. | Coming soon |
-| **❄️ Smart HVAC Pre-Cooling** | `Planned` | Leverages solar production and thermal mass to precool or preheat living spaces ahead of peak rate windows. | Coming soon |
 
 ---
 
