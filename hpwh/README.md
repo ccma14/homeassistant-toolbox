@@ -8,11 +8,11 @@ A complete, 24-hour lifecycle management system for Heat Pump Water Heaters (suc
 
 To avoid draining home battery storage or drawing grid power overnight, the heat pump's setpoint is lowered to 120°F in the evening (16:00 PM), relying on the tank as a pre-charged thermal battery.
 
-However, evening water usage (showers, dishes, laundry) introduces severe **thermal stratification**:
+However, occasional heavy evening water usage (e.g. late showers, baths, or dishwashing) introduces severe **thermal stratification**:
 * Cold municipal water enters the bottom of the tank via the dip tube, displacing hot water in the lower ~60% of the volume.
 * Hot water floats at the top, keeping the upper tank temperature sensor at or near the 120°F reduced setpoint.
 * Because the upper sensor satisfies the thermostat, the heat pump never triggers overnight.
-* By morning shower time (06:30–08:00 AM), only a thin layer of hot water remains. The first morning shower quickly exhausts this top layer and draws cold water from below—hours before the 10:00 AM daytime solar boost window could ever engage.
+* Without intervention, only a thin layer of hot water remains at the top. When morning showers are taken, that top layer is quickly exhausted, drawing cold water from below—hours before the 10:00 AM daytime solar boost window could ever engage.
 
 ![Tank Stratification](../images/tank_stratification.png)
 *Figure 1: Widening gap between upper and lower tank temperatures following evening water draws.*
@@ -24,7 +24,7 @@ However, evening water usage (showers, dishes, laundry) introduces severe **ther
 
 ## The Solution
 
-1. **Early Morning Assurance (06:30 AM):** Evaluates the lower tank temperature. If depleted (< 102°F), it calculates a dynamic overdrive setpoint (`upper + 4°F`, up to 140°F) to force the compressor on, runs until the lower tank reaches a safe reserve (112°F), and resets back to baseline.
+1. **Early Morning Assurance (06:30 AM default check):** Evaluates the lower tank temperature well before morning showers. If depleted (< 102°F), it calculates a dynamic overdrive setpoint (`upper + 4°F`, up to 140°F) to force the compressor on, runs until the lower tank reaches a safe reserve (112°F), and resets back to baseline—guaranteeing recovery completes before shower time.
 2. **Daytime Solar Soak (10:00 AM):** Checks today's solar PV forecast. If high (> 25 kWh), boosts setpoint to 140°F to store free solar energy as thermal storage. If low, maintains a reliable 125°F baseline.
 3. **Evening Reset (16:00 PM):** Drops setpoint to 120°F to prevent the compressor from cycling overnight on home battery storage or grid power, treating the water heater as a pre-charged thermal battery.
 4. **Native Logbook Integration:** Automatically logs every setpoint change and trigger event to Home Assistant's native Logbook with zero helpers or setup required.
