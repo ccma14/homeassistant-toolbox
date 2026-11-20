@@ -18,6 +18,7 @@ class HpwhCard extends HTMLElement {
     }
     this._config = {
       title: "♨️ Heat Pump Water Heater",
+      shower_display: "minutes",
       ...config
     };
     if (this._initialized) {
@@ -63,6 +64,17 @@ class HpwhCard extends HTMLElement {
           selector: { entity: { domain: "automation" } }
         },
         {
+          name: "shower_display",
+          selector: {
+            select: {
+              options: [
+                { value: "minutes", label: "Shower Minutes (e.g. 38 min)" },
+                { value: "gallons", label: "Gallons (e.g. 77 gal)" }
+              ]
+            }
+          }
+        },
+        {
           name: "title",
           selector: { text: {} }
         }
@@ -73,6 +85,7 @@ class HpwhCard extends HTMLElement {
   static getStubConfig() {
     return {
       title: "♨️ Heat Pump Water Heater",
+      shower_display: "minutes",
       entity: "climate.water_heater",
       power_sensor: "sensor.water_heater_power",
       soc_sensor: "sensor.water_heater_state_of_charge",
@@ -365,6 +378,7 @@ class HpwhCard extends HTMLElement {
       upperVal: this.shadowRoot.getElementById("upper-val"),
       lowerVal: this.shadowRoot.getElementById("lower-val"),
       showerVal: this.shadowRoot.getElementById("shower-val"),
+      showerItem: this.shadowRoot.getElementById("click-shower"),
       autoText: this.shadowRoot.getElementById("auto-text")
     };
 
@@ -502,11 +516,39 @@ class HpwhCard extends HTMLElement {
     this._elements.upperVal.textContent = upperEntity ? `${Math.round(parseFloat(upperEntity.state))}°` : "--";
     this._elements.lowerVal.textContent = lowerEntity ? `${Math.round(parseFloat(lowerEntity.state))}°` : "--";
 
-    let showerGal = "--";
-    if (socEntity && socEntity.attributes && socEntity.attributes.usable_shower_gallons_est !== undefined) {
-      showerGal = `${Math.round(socEntity.attributes.usable_shower_gallons_est)} gal`;
+    // Shower Buffer (Gallons or Minutes)
+    const showMinutes = this._config.shower_display !== "gallons";
+    let showerValStr = "--";
+    let showerTooltip = "Click to view Shower Buffer details";
+
+    if (socEntity && socEntity.attributes) {
+      let gal = socEntity.attributes.usable_shower_gallons_est;
+      let min = socEntity.attributes.usable_shower_minutes_est;
+
+      // Graceful fallback if only one attribute is present
+      if (min === undefined && gal !== undefined) {
+        min = Math.round(gal / 2.0);
+      } else if (gal === undefined && min !== undefined) {
+        gal = Math.round(min * 2.0);
+      }
+
+      if (showMinutes) {
+        showerValStr = min !== undefined ? `${Math.round(min)} min` : "--";
+        if (gal !== undefined) {
+          showerTooltip = `Shower Buffer: ~${Math.round(min)} min (approx. ${Math.round(gal)} gal @ 2.0 GPM)`;
+        }
+      } else {
+        showerValStr = gal !== undefined ? `${Math.round(gal)} gal` : "--";
+        if (min !== undefined) {
+          showerTooltip = `Shower Buffer: ~${Math.round(gal)} gal (approx. ${Math.round(min)} min @ 2.0 GPM)`;
+        }
+      }
     }
-    this._elements.showerVal.textContent = showerGal;
+
+    this._elements.showerVal.textContent = showerValStr;
+    if (this._elements.showerItem) {
+      this._elements.showerItem.title = showerTooltip;
+    }
   }
 }
 
