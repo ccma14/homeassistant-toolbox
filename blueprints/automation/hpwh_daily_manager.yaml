@@ -1,0 +1,304 @@
+blueprint:
+  name: "Solar & Stratification Heat Pump Water Heater Manager"
+  description: >-
+    Manages a Heat Pump Water Heater (such as a Rheem EcoNet HPWH) across a 24-hour cycle:
+    1) Early Morning Assurance: Conditionally boosts setpoint if overnight usage caused lower-tank
+       thermal stratification, guaranteeing hot morning showers without burning unnecessary grid power.
+    2) Daytime Solar Soak: Pre-heats the tank to a high setpoint (e.g. 140°F) on high solar forecast days,
+       or restores baseline (e.g. 125°F) on cloudy days.
+    3) Evening Reset: Lowers setpoint (e.g. 120°F) to prevent compressor cycling on grid power overnight.
+    4) Dashboard Logging: Optionally updates an input_text helper with readable status messages.
+  domain: automation
+  input:
+    water_heater:
+      name: "Water Heater Climate Entity"
+      description: "The climate entity controlling your heat pump water heater."
+      selector:
+        entity:
+          domain: climate
+
+    lower_tank_sensor:
+      name: "Lower Tank Temperature Sensor"
+      description: "Sensor reading the lower tank temperature (leading indicator of cold water depletion)."
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+
+    upper_tank_sensor:
+      name: "Upper Tank Temperature Sensor"
+      description: "Sensor reading the upper tank temperature."
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+
+    solar_forecast_sensor:
+      name: "Solar Forecast Sensor"
+      description: "Sensor providing today's solar PV forecast in kWh (e.g. Solcast)."
+      selector:
+        entity:
+          domain: sensor
+
+    solar_forecast_threshold:
+      name: "Solar Forecast Threshold"
+      description: "Forecast value in kWh above which the water heater is boosted to the solar target."
+      default: 25
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "kWh"
+          mode: box
+
+    # --- Time Windows ---
+    morning_boost_time:
+      name: "Morning Assurance Time"
+      description: "Time to check if the lower tank needs pre-shower recovery."
+      default: "06:30:00"
+      selector:
+        time: {}
+
+    solar_soak_time:
+      name: "Daytime Solar Soak Time"
+      description: "Time to engage the daytime solar heating boost."
+      default: "10:00:00"
+      selector:
+        time: {}
+
+    evening_reset_time:
+      name: "Evening Reset Time"
+      description: "Time to drop the setpoint back to baseline for the evening and night."
+      default: "16:00:00"
+      selector:
+        time: {}
+
+    # --- Temperature Thresholds ---
+    morning_lower_threshold:
+      name: "Depleted Lower Tank Threshold"
+      description: "If lower tank is below this temperature at the morning check, recovery will trigger."
+      default: 102
+      selector:
+        number:
+          min: 70
+          max: 120
+          step: 1
+          unit_of_measurement: "°F"
+          mode: box
+
+    morning_recovery_target:
+      name: "Lower Tank Recovery Target"
+      description: "Once the lower tank warms up to this temperature during morning recovery, it resets."
+      default: 112
+      selector:
+        number:
+          min: 90
+          max: 130
+          step: 1
+          unit_of_measurement: "°F"
+          mode: box
+
+    solar_target_temperature:
+      name: "Solar Boost Target Temperature"
+      description: "Target temperature set on high-solar days."
+      default: 140
+      selector:
+        number:
+          min: 120
+          max: 150
+          step: 1
+          unit_of_measurement: "°F"
+          mode: box
+
+    cloudy_target_temperature:
+      name: "Cloudy Baseline Target Temperature"
+      description: "Target temperature set during the daytime window on low-solar days."
+      default: 125
+      selector:
+        number:
+          min: 115
+          max: 135
+          step: 1
+          unit_of_measurement: "°F"
+          mode: box
+
+    evening_target_temperature:
+      name: "Evening Reset Target Temperature"
+      description: "Target temperature set in the evening to prevent overnight grid cycling."
+      default: 120
+      selector:
+        number:
+          min: 110
+          max: 130
+          step: 1
+          unit_of_measurement: "°F"
+          mode: box
+
+    status_helper:
+      name: "(Optional) Status Logging Helper"
+      description: "An optional input_text helper to record human-readable status updates for dashboards."
+      default: ""
+      selector:
+        entity:
+          domain: input_text
+
+# Map inputs into Jinja template variables for clean reuse
+variables:
+  v_heater: !input water_heater
+  v_lower_sensor: !input lower_tank_sensor
+  v_upper_sensor: !input upper_tank_sensor
+  v_solar_sensor: !input solar_forecast_sensor
+  v_solar_thresh: !input solar_forecast_threshold
+  v_morning_thresh: !input morning_lower_threshold
+  v_recovery_thresh: !input morning_recovery_target
+  v_solar_temp: !input solar_target_temperature
+  v_cloudy_temp: !input cloudy_target_temperature
+  v_evening_temp: !input evening_target_temperature
+  v_status_helper: !input status_helper
+
+trigger:
+  - trigger: time
+    at: !input morning_boost_time
+    id: morning_boost
+
+  - trigger: time
+    at: !input solar_soak_time
+    id: solar_soak
+
+  - trigger: time
+    at: !input evening_reset_time
+    id: evening_reset
+
+action:
+  - choose:
+      # =========================================================================
+      # Stage 1: Morning Assurance
+      # =========================================================================
+      - conditions:
+          - condition: trigger
+            id: morning_boost
+          - condition: template
+            value_template: >-
+              {{ states(v_lower_sensor) | float(999) < (v_morning_thresh | float) }}
+        sequence:
+          # Compute overdrive target (upper + 4°F) to force compressor on
+          - variables:
+              target_temp: >-
+                {% set upper = states(v_upper_sensor) | float(120) %}
+                {{ [ [ (upper + 4) | round(0), 125 ] | max, 140 ] | min }}
+
+          - action: climate.set_temperature
+            target:
+              entity_id: !input water_heater
+            data:
+              temperature: "{{ target_temp }}"
+
+          - if:
+              - condition: template
+                value_template: "{{ v_status_helper != '' }}"
+            then:
+              - action: input_text.set_value
+                target:
+                  entity_id: !input status_helper
+                data:
+                  value: >-
+                    Morning Boost: Set to {{ target_temp }}°F at {{ now().strftime('%I:%M %p') }} (Lower: {{ states(v_lower_sensor) }}°F)
+
+          # Wait until lower tank recovers
+          - wait_for_trigger:
+              - trigger: template
+                value_template: >-
+                  {{ states(v_lower_sensor) | float(0) >= (v_recovery_thresh | float) }}
+            timeout: "02:00:00"
+            continue_on_timeout: true
+
+          - action: climate.set_temperature
+            target:
+              entity_id: !input water_heater
+            data:
+              temperature: !input evening_target_temperature
+
+          - if:
+              - condition: template
+                value_template: "{{ v_status_helper != '' }}"
+            then:
+              - action: input_text.set_value
+                target:
+                  entity_id: !input status_helper
+                data:
+                  value: >-
+                    Morning Reset: {{ v_evening_temp }}°F at {{ now().strftime('%I:%M %p') }} (Lower recovered to {{ states(v_lower_sensor) }}°F)
+
+      # =========================================================================
+      # Stage 2: Daytime Solar Soak / Baseline
+      # =========================================================================
+      - conditions:
+          - condition: trigger
+            id: solar_soak
+        sequence:
+          - choose:
+              # High solar forecast
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ states(v_solar_sensor) | float(0) > (v_solar_thresh | float) }}
+                sequence:
+                  - action: climate.set_temperature
+                    target:
+                      entity_id: !input water_heater
+                    data:
+                      temperature: !input solar_target_temperature
+                  - if:
+                      - condition: template
+                        value_template: "{{ v_status_helper != '' }}"
+                    then:
+                      - action: input_text.set_value
+                        target:
+                          entity_id: !input status_helper
+                        data:
+                          value: >-
+                            Solar Boost: {{ v_solar_temp }}°F at {{ now().strftime('%I:%M %p') }} (Forecast: {{ states(v_solar_sensor) }} kWh)
+
+            # Low solar forecast
+            default:
+              - action: climate.set_temperature
+                target:
+                  entity_id: !input water_heater
+                data:
+                  temperature: !input cloudy_target_temperature
+              - if:
+                  - condition: template
+                    value_template: "{{ v_status_helper != '' }}"
+                then:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: !input status_helper
+                        data:
+                          value: >-
+                            Cloudy Baseline: {{ v_cloudy_temp }}°F at {{ now().strftime('%I:%M %p') }} (Forecast: {{ states(v_solar_sensor) }} kWh)
+
+      # =========================================================================
+      # Stage 3: Evening Reset
+      # =========================================================================
+      - conditions:
+          - condition: trigger
+            id: evening_reset
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: !input water_heater
+            data:
+              temperature: !input evening_target_temperature
+          - if:
+              - condition: template
+                value_template: "{{ v_status_helper != '' }}"
+            then:
+              - action: input_text.set_value
+                target:
+                  entity_id: !input status_helper
+                data:
+                  value: >-
+                    Evening Reset: Set to {{ v_evening_temp }}°F at {{ now().strftime('%I:%M %p') }}
+
+mode: restart
