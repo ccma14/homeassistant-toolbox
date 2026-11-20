@@ -106,15 +106,25 @@ You can choose between the **Dedicated Custom UI Card** (with a visual graphical
 This card provides an ultra-compact layout with an SVG battery dial, glance metrics, boost buttons, and a **100% visual configuration dialog** (dropdown entity pickers).
 
 ##### 1. Install the Card:
-1. Download or copy [`hpwh-card.js`](hpwh-card.js) into your Home Assistant directory at `/config/www/hpwh-card.js`.
-2. In Home Assistant, navigate to **Settings > Dashboards > 3 dots (top right) > Resources > + Add Resource**.
-3. Set **URL** to `/local/hpwh-card.js` and **Resource type** to `JavaScript Module`.
+1. Download [`hpwh-card.js`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js) into your Home Assistant directory at `/config/www/hpwh-card.js`:
+   ```bash
+   wget -O /config/www/hpwh-card.js https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js
+   ```
+2. In Home Assistant, open the **Dashboard Resources** page:
+
+   [![Open your Home Assistant instance and show your dashboard resources.](https://my.home-assistant.io/badges/lovelace_resources.svg)](https://my.home-assistant.io/redirect/lovelace_resources/)
+
+   *(Or navigate to **Settings > Dashboards > 3 dots (top right) > Resources**, or open `/config/lovelace/resources` directly on your server. Note: Ensure **Advanced Mode** is toggled ON under your user profile for this menu to be visible).*
+3. Click **+ Add Resource** (bottom right):
+   * **URL:** `/local/hpwh-card.js`
+   * **Resource type:** `JavaScript Module`
 4. Refresh your browser window.
 
 ##### 2. Add to Dashboard:
 1. Open your dashboard and click **Edit Dashboard** $\rightarrow$ **+ Add Card**.
 2. Search for **Heat Pump Water Heater Card** (or select it from the card picker).
-3. Select your entities using the visual dropdown pickers—**no YAML editing required!**
+3. Select your entities using the visual dropdown pickers (**Water Heater**, **Power Sensor**, **SoC Sensor**, **Tank Temperatures**)—**no YAML editing required!**
+4. All metrics (SoC dial, Status, Target, and Temperatures) are **clickable** to view native Home Assistant history and graphs.
 
 ---
 
