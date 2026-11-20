@@ -14,10 +14,10 @@ However, occasional heavy evening water usage (e.g. late showers, baths, or dish
 * Because the upper sensor satisfies the thermostat, the heat pump never triggers overnight.
 * Without intervention, only a thin layer of hot water remains at the top. When morning showers are taken, that top layer is quickly exhausted, drawing cold water from below—hours before the 10:00 AM daytime solar boost window could ever engage.
 
-![Tank Stratification](../images/tank_stratification.png)
+![Tank Stratification](images/tank_stratification.png)
 *Figure 1: Widening gap between upper and lower tank temperatures following evening water draws.*
 
-![Target Temperature Response](../images/target_temperature_response.png)
+![Target Temperature Response](images/target_temperature_response.png)
 *Figure 2: Heat pump setpoint remains static while the lower tank drops into depleted temperatures.*
 
 ---
@@ -98,6 +98,10 @@ Navigate to **Developer Tools > YAML** and click **Template Entities**. The sens
 ---
 
 ### Step 3: Add the Dashboard Card
+
+<p align="center">
+  <img src="images/hpwh.png" width="400" alt="Heat Pump Water Heater Dashboard Card">
+</p>
 
 You can choose between the **Dedicated Custom UI Card** (with a visual graphical configuration dialog) or the **Native YAML Card**.
 
