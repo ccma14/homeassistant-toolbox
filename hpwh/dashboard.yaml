@@ -1,0 +1,106 @@
+# Home Assistant Dashboard Card: Heat Pump Water Heater Manager
+#
+# How to install:
+# 1. In Home Assistant, open your Dashboard, click the pencil icon (top right) to Edit Dashboard.
+# 2. Click "Add Card" (bottom right), scroll to the bottom and select "Manual".
+# 3. Paste this YAML and click "Save".
+#
+# Note: Entities in this card match the default names created by the blueprint
+# and template sensor:
+#   - sensor.water_heater_state_of_charge
+#   - climate.water_heater_econet_hpwh
+#   - sensor.water_heater_upper_tank_temperature
+#   - sensor.water_heater_lower_tank_temperature
+#   - sensor.solcast_pv_forecast_forecast_today
+#   - input_text.water_heater_last_action
+# Adjust any entity IDs to match your setup if named differently.
+
+type: vertical-stack
+title: ♨️ Heat Pump Water Heater
+cards:
+  # 1. Thermal Storage Gauge (SoC %)
+  - type: gauge
+    entity: sensor.water_heater_state_of_charge
+    name: Tank Thermal Storage (SoC)
+    unit: "%"
+    min: 0
+    max: 135
+    needle: true
+    severity:
+      green: 90
+      yellow: 60
+      red: 0
+
+  # 2. Key Status Grid: Operating Mode & Target Temperature
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: climate.water_heater_econet_hpwh
+        name: HPWH Status
+        state_content:
+          - state
+          - action
+      - type: tile
+        entity: climate.water_heater_econet_hpwh
+        name: Target Setpoint
+        state_content:
+          - temperature
+
+  # 3. Stratification & Hot Water Reserves
+  - type: entities
+    title: Tank Conditions
+    show_header_toggle: false
+    entities:
+      - entity: sensor.water_heater_upper_tank_temperature
+        name: Upper Tank (Supply)
+        icon: mdi:thermometer-high
+      - entity: sensor.water_heater_lower_tank_temperature
+        name: Lower Tank (Inlet / Trigger)
+        icon: mdi:thermometer-low
+      - type: attribute
+        entity: sensor.water_heater_state_of_charge
+        attribute: tank_spread
+        name: Stratification Spread
+        unit: "°F"
+        icon: mdi:arrow-expand-vertical
+      - type: attribute
+        entity: sensor.water_heater_state_of_charge
+        attribute: usable_shower_gallons_est
+        name: Shower Water Available (@ 105°F)
+        unit: "gal"
+        icon: mdi:shower-head
+      - entity: sensor.solcast_pv_forecast_forecast_today
+        name: Solar Forecast Today
+        icon: mdi:solar-power
+
+  # 4. Latest Setpoint Change / Automation Log
+  - type: markdown
+    content: >-
+      **Latest Action:**  
+      {{ states('input_text.water_heater_last_action') | default('No actions recorded yet today.', true) }}
+
+  # 5. Quick Manual Overrides
+  - type: horizontal-stack
+    cards:
+      - type: button
+        name: Solar Boost (140°F)
+        icon: mdi:weather-sunny
+        tap_action:
+          action: call-service
+          service: climate.set_temperature
+          target:
+            entity_id: climate.water_heater_econet_hpwh
+          data:
+            temperature: 140
+      - type: button
+        name: Normal Reset (120°F)
+        icon: mdi:restart
+        tap_action:
+          action: call-service
+          service: climate.set_temperature
+          target:
+            entity_id: climate.water_heater_econet_hpwh
+          data:
+            temperature: 120

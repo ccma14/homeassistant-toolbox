@@ -1,24 +1,42 @@
 # Home Assistant Toolbox
 
-A collection of Home Assistant automation blueprints, template sensors, and tools maintained by [@ccma14](https://github.com/ccma14).
+A collection of modular, production-ready Home Assistant automations, blueprints, template sensors, and dashboards maintained by [@ccma14](https://github.com/ccma14).
+
+Each solution is packaged in its own self-contained directory with dedicated setup guides, template sensors, blueprints, and Lovelace cards.
 
 ---
 
-## ♨️ Heat Pump Water Heater Manager
+## 📦 Available Solutions
 
-A complete package for 24-hour lifecycle management of Heat Pump Water Heaters. Overcomes thermal stratification in heat pump tanks by conditionally boosting early morning temperatures before showers, pre-heats with solar during the day, and resets in the evening.
+| Solution | Status | Description | Link |
+| :--- | :--- | :--- | :--- |
+| **♨️ Heat Pump Water Heater Manager** | `Stable` | Overcomes tank thermal stratification, pre-heats with solar PV forecast, tracks true volumetric State of Charge (SoC), and provides glanceable dashboard controls. | [**Explore `hpwh/`**](hpwh/) |
+| **⚡ Smart EV Solar Charging** | `Planned` | Dynamically throttles EV charging current based on real-time solar surplus and utility time-of-use (TOU) export rates. | Coming soon |
+| **❄️ Smart HVAC Pre-Cooling** | `Planned` | Leverages solar production and thermal mass to precool or preheat living spaces ahead of peak rate windows. | Coming soon |
 
-### Components
-1. **Automation Blueprint:** [`blueprints/automation/hpwh_daily_manager.yaml`](blueprints/automation/hpwh_daily_manager.yaml)
-2. **True State of Charge (SoC) Template Sensor:** [`templates/water_heater_soc.yaml`](templates/water_heater_soc.yaml)
+---
 
-### Prerequisites & Integrations
-- **Water Heater Integration:** Any heat pump water heater exposing a `climate` entity and tank temperature sensors. Common examples include:
-  - Rheem / Ruud EcoNet via local [esphome-econet](https://github.com/esphome-econet/esphome-econet) or the native cloud EcoNet integration.
-  - A.O. Smith, Stiebel Eltron, or custom Modbus / ESPHome hardware monitors.
-- **Solar Production Forecast:** Any sensor providing today's estimated solar PV generation in kWh (e.g., [Solcast](https://github.com/BJReplay/ha-solcast-solar), [Forecast.Solar](https://www.home-assistant.io/integrations/forecast_solar/), or custom templates).
-- **Thermostatic Mixing Valve:** Installed at the tank hot water outlet to safely temper 140°F storage water down to fixture temperatures.
-- **[Home Assistant Blueprints](https://www.home-assistant.io/docs/blueprint/):** Official documentation on importing and configuring automation blueprints.
+## 🛠️ Repository Organization
+
+Each directory in this repository represents an end-to-end appliance or energy management package structured as follows:
+
+```text
+homeassistant-toolbox/
+├── README.md               # Global catalog & project directory (this file)
+└── <solution_folder>/      # e.g., hpwh/, ev_charger/
+    ├── README.md           # In-depth problem statement, theory & step-by-step setup
+    ├── blueprint.yaml      # Ready-to-import Home Assistant automation blueprint
+    ├── templates.yaml      # Jinja template sensors and attributes
+    └── dashboard.yaml      # Native Lovelace UI card configuration
+```
+
+---
+
+## 🚀 Quick Start
+
+1. Pick the solution you want to install from the table above.
+2. Open its folder (for example, [`hpwh/`](hpwh/)) and follow the step-by-step installation instructions in its `README.md`.
+3. Blueprints can be imported directly into Home Assistant using the raw GitHub URL of any `blueprint.yaml` file.
 
 ---
 
