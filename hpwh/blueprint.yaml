@@ -1,13 +1,12 @@
 blueprint:
   name: "Solar & Stratification Heat Pump Water Heater Manager"
-  description: >-
-    Manages a Heat Pump Water Heater (such as Rheem EcoNet, A.O. Smith, or custom ESPHome/Modbus setups) across a 24-hour cycle:
-    1) Early Morning Assurance: Conditionally boosts setpoint if overnight usage caused lower-tank
-       thermal stratification, guaranteeing hot morning showers without unnecessarily draining home batteries or drawing grid power.
-    2) Daytime Solar Soak: Pre-heats the tank to a high setpoint (e.g. 140°F) on high solar forecast days,
-       or restores baseline (e.g. 125°F) on cloudy days.
-    3) Evening Reset: Lowers setpoint (e.g. 120°F) to prevent compressor cycling overnight on home battery storage or grid power.
-    4) Native Logging: Automatically logs all actions to Home Assistant's native Logbook.
+  description: |
+    Automates a 24-hour lifecycle for Heat Pump Water Heaters to eliminate thermal stratification and maximize solar thermal energy:
+
+    * **Early Morning Assurance:** Checks the lower tank before morning showers. If depleted by evening usage, temporarily boosts the setpoint to reheat the lower tank buffer before shower time.
+    * **Daytime Solar Soak:** Pre-heats the tank to 140°F on high solar forecast days to bank thermal energy, or maintains baseline (125°F) on cloudy days.
+    * **Evening Reset:** Drops setpoint to 120°F to prevent the compressor from cycling overnight on home battery storage or grid power.
+    * **Native Logging:** Automatically logs all setpoint changes and temperature triggers directly to Home Assistant's Logbook.
   domain: automation
   input:
     water_heater:
