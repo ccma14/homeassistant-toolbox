@@ -63,10 +63,10 @@ Then reload blueprints under **Developer Tools > YAML > Automations**.
 #### Creating the Automation:
 1. In **Settings > Automations & Scenes > Blueprints**, find **Solar & Stratification Heat Pump Water Heater Manager** and click **Create Automation**.
 2. Select your entities:
-   * **Water Heater Climate Entity:** `climate.water_heater_econet_hpwh`
+   * **Water Heater Climate Entity:** `climate.water_heater` (or your water heater entity)
    * **Lower Tank Temperature Sensor:** `sensor.water_heater_lower_tank_temperature`
    * **Upper Tank Temperature Sensor:** `sensor.water_heater_upper_tank_temperature`
-   * **Solar Forecast Sensor:** `sensor.solcast_pv_forecast_forecast_today`
+   * **Solar Forecast Sensor:** `sensor.solar_forecast_today` (e.g. Solcast, Forecast.Solar)
 3. Click **Save**. **You're done!** Your water heater will now automatically manage morning recovery, daytime solar soak, and evening reset. Every action is logged to your water heater's native Logbook.
 
 ---
@@ -80,49 +80,7 @@ If you'd like a visual dashboard with a thermal battery gauge, stratification sp
 The SoC sensor computes true tank thermal reserves using a 40% upper / 60% lower volumetric weighting:
 
 #### If your `configuration.yaml` uses `template: !include templates.yaml`:
-Open your `templates.yaml` and paste the contents of [`templates.yaml`](templates.yaml) (starting from the `- sensor:` line):
-```yaml
-- sensor:
-    - name: "Water Heater State of Charge"
-      unique_id: water_heater_state_of_charge
-      unit_of_measurement: "%"
-      state_class: measurement
-      icon: mdi:battery-charging-high
-      state: >-
-        {% set cold_inlet = 65.0 %}
-        {% set target_baseline = 120.0 %}
-        {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
-        {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
-        {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
-        {% set soc = ((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100 %}
-        {{ [ [ soc | round(1), 0 ] | max, 135 ] | min }}
-      attributes:
-        upper_temperature: >-
-          {{ states('sensor.water_heater_upper_tank_temperature') | float(0) }}
-        lower_temperature: >-
-          {{ states('sensor.water_heater_lower_tank_temperature') | float(0) }}
-        average_temperature: >-
-          {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
-          {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(120) %}
-          {{ ((upper * 0.4) + (lower * 0.6)) | round(1) }}
-        tank_spread: >-
-          {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(0) %}
-          {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(0) %}
-          {{ (upper - lower) | round(1) }}
-        usable_shower_gallons_est: >-
-          {% set cold_inlet = 65.0 %}
-          {% set shower_temp = 105.0 %}
-          {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
-          {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(120) %}
-          {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
-          {% if avg_temp > cold_inlet %}
-            {% set total_heat_btu = 65.0 * 8.33 * (avg_temp - cold_inlet) %}
-            {% set gal_at_105 = total_heat_btu / (8.33 * (shower_temp - cold_inlet)) %}
-            {{ [gal_at_105 | round(0), 0] | max }}
-          {% else %}
-            0
-          {% endif %}
-```
+Open your `templates.yaml` and paste the contents of [`templates.yaml`](templates.yaml) (starting from the `- sensor:` line). If your sensor names differ from the defaults, simply find & replace them.
 
 #### Reloading:
 Navigate to **Developer Tools > YAML** and click **Template Entities**. The sensor `sensor.water_heater_state_of_charge` will become active immediately without a restart.
@@ -137,7 +95,9 @@ The dashboard card uses standard, native Home Assistant UI components (no HACS r
 2. Click the **three dots** in the top-right corner and select **Edit Dashboard**.
 3. Click **+ Add Card** at the bottom right.
 4. Scroll to the bottom of the card list and select **Manual**.
-5. Paste the complete YAML from [`dashboard.yaml`](dashboard.yaml).
+5. Paste the complete YAML from [`dashboard.yaml`](dashboard.yaml).  
+   *(If your entity IDs differ from the generic defaults, press `Ctrl+F` or `Cmd+F` in the editor to replace `climate.water_heater`, etc.)*
+6. Click **Save** and then **Done**.
 6. Click **Save** and then **Done**.
 
 ---

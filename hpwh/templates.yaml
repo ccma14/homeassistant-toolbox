@@ -1,5 +1,21 @@
-# Home Assistant Template Sensors for Rheem EcoNet HPWH
-# Add this block to your configuration.yaml (under `template:`) or into templates.yaml
+# ==============================================================================
+# Heat Pump Water Heater: True State of Charge (SoC) Template Sensor
+# ==============================================================================
+# Configuration:
+# If your sensor names differ from the defaults below, use Find & Replace:
+#   - Upper Tank Sensor: sensor.water_heater_upper_tank_temperature
+#   - Lower Tank Sensor: sensor.water_heater_lower_tank_temperature
+#
+# Calibration Defaults:
+#   - cold_inlet: 65.0 (typical incoming municipal groundwater temp in °F)
+#   - target_baseline: 120.0 (nominal baseline setpoint in °F)
+#   - tank_gallons: 65.0 (total tank volume in gallons)
+#   - shower_temp: 105.0 (typical hot shower delivery temp in °F)
+#
+# How to install:
+#   If using 'templates.yaml', paste starting from line '- sensor:' below.
+#   If using 'configuration.yaml', ensure this block is placed under 'template:'.
+# ==============================================================================
 
 template:
   - sensor:
@@ -17,8 +33,8 @@ template:
           {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
           {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
 
-          {# Volumetric weighted average (Rheem HPWH condenser coil is wrapped #}
-          {# around lower ~60% of tank; lower sensor reflects cold water influx) #}
+          {# Volumetric weighted average (HPWH condenser coil is wrapped around #}
+          {# lower ~60% of tank; lower sensor reflects cold water influx) #}
           {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
 
           {# Compute SoC relative to cold inlet and normal 120F target #}
@@ -40,14 +56,15 @@ template:
             {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(0) %}
             {{ (upper - lower) | round(1) }}
           usable_shower_gallons_est: >-
-            {# Estimated gallons of 105F shower water available in 65gal tank #}
+            {# Estimated gallons of 105F shower water available in tank #}
             {% set cold_inlet = 65.0 %}
             {% set shower_temp = 105.0 %}
+            {% set tank_gallons = 65.0 %}
             {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
             {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(120) %}
             {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
             {% if avg_temp > cold_inlet %}
-              {% set total_heat_btu = 65.0 * 8.33 * (avg_temp - cold_inlet) %}
+              {% set total_heat_btu = tank_gallons * 8.33 * (avg_temp - cold_inlet) %}
               {% set gal_at_105 = total_heat_btu / (8.33 * (shower_temp - cold_inlet)) %}
               {{ [gal_at_105 | round(0), 0] | max }}
             {% else %}

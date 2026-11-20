@@ -1,18 +1,19 @@
+# ==============================================================================
 # Home Assistant Dashboard Card: Heat Pump Water Heater Manager
+# ==============================================================================
+# Configuration:
+# If your entities differ from the standard defaults below, use Find & Replace:
+#   - Water Heater Entity: climate.water_heater
+#   - Upper Tank Sensor:   sensor.water_heater_upper_tank_temperature
+#   - Lower Tank Sensor:   sensor.water_heater_lower_tank_temperature
+#   - Solar Forecast:      sensor.solar_forecast_today
+#   - State of Charge:     sensor.water_heater_state_of_charge
 #
 # How to install:
-# 1. In Home Assistant, open your Dashboard, click the pencil icon (top right) to Edit Dashboard.
-# 2. Click "Add Card" (bottom right), scroll to the bottom and select "Manual".
+# 1. In Home Assistant, open your Dashboard and click "Edit Dashboard" (pencil icon).
+# 2. Click "+ Add Card" (bottom right), scroll down and select "Manual".
 # 3. Paste this YAML and click "Save".
-#
-# Note: Entities in this card match the default names created by the blueprint
-# and template sensor:
-#   - sensor.water_heater_state_of_charge
-#   - climate.water_heater_econet_hpwh
-#   - sensor.water_heater_upper_tank_temperature
-#   - sensor.water_heater_lower_tank_temperature
-#   - sensor.solcast_pv_forecast_forecast_today
-# Adjust any entity IDs to match your setup if named differently.
+# ==============================================================================
 
 type: vertical-stack
 title: ♨️ Heat Pump Water Heater
@@ -36,13 +37,13 @@ cards:
     square: false
     cards:
       - type: tile
-        entity: climate.water_heater_econet_hpwh
+        entity: climate.water_heater
         name: HPWH Status
         state_content:
           - state
           - action
       - type: tile
-        entity: climate.water_heater_econet_hpwh
+        entity: climate.water_heater
         name: Target Setpoint
         state_content:
           - temperature
@@ -70,7 +71,7 @@ cards:
         name: Shower Water Available (@ 105°F)
         unit: "gal"
         icon: mdi:shower-head
-      - entity: sensor.solcast_pv_forecast_forecast_today
+      - entity: sensor.solar_forecast_today
         name: Solar Forecast Today
         icon: mdi:solar-power
 
@@ -78,7 +79,7 @@ cards:
   - type: logbook
     title: Automation Activity
     entities:
-      - climate.water_heater_econet_hpwh
+      - climate.water_heater
     hours_to_show: 24
 
   # 5. Quick Manual Overrides
@@ -91,7 +92,7 @@ cards:
           action: call-service
           service: climate.set_temperature
           target:
-            entity_id: climate.water_heater_econet_hpwh
+            entity_id: climate.water_heater
           data:
             temperature: 140
       - type: button
@@ -101,6 +102,6 @@ cards:
           action: call-service
           service: climate.set_temperature
           target:
-            entity_id: climate.water_heater_econet_hpwh
+            entity_id: climate.water_heater
           data:
             temperature: 120

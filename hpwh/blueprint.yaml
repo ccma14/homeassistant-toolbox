@@ -7,7 +7,7 @@ blueprint:
     2) Daytime Solar Soak: Pre-heats the tank to a high setpoint (e.g. 140°F) on high solar forecast days,
        or restores baseline (e.g. 125°F) on cloudy days.
     3) Evening Reset: Lowers setpoint (e.g. 120°F) to prevent compressor cycling on grid power overnight.
-    4) Built-in Logging: Logs all actions to the native Home Assistant Logbook (and optionally updates an input_text helper).
+    4) Native Logging: Automatically logs all actions to Home Assistant's native Logbook.
   domain: automation
   input:
     water_heater:
@@ -135,14 +135,6 @@ blueprint:
           unit_of_measurement: "°F"
           mode: box
 
-    status_helper:
-      name: "(Optional) Status Logging Helper"
-      description: "An optional input_text helper if you wish to record human-readable status updates to an entity."
-      default: ""
-      selector:
-        entity:
-          domain: input_text
-
 # Map inputs into Jinja template variables for clean reuse
 variables:
   v_heater: !input water_heater
@@ -155,7 +147,6 @@ variables:
   v_solar_temp: !input solar_target_temperature
   v_cloudy_temp: !input cloudy_target_temperature
   v_evening_temp: !input evening_target_temperature
-  v_status_helper: !input status_helper
 
 trigger:
   - trigger: time
@@ -200,17 +191,6 @@ action:
               message: "Morning Boost: Set to {{ target_temp }}°F (Lower: {{ states(v_lower_sensor) }}°F)"
               entity_id: !input water_heater
 
-          - if:
-              - condition: template
-                value_template: "{{ v_status_helper != '' }}"
-            then:
-              - action: input_text.set_value
-                target:
-                  entity_id: !input status_helper
-                data:
-                  value: >-
-                    Morning Boost: Set to {{ target_temp }}°F at {{ now().strftime('%I:%M %p') }} (Lower: {{ states(v_lower_sensor) }}°F)
-
           # Wait until lower tank recovers
           - wait_for_trigger:
               - trigger: template
@@ -230,17 +210,6 @@ action:
               name: "HPWH Manager"
               message: "Morning Reset: {{ v_evening_temp }}°F (Lower recovered to {{ states(v_lower_sensor) }}°F)"
               entity_id: !input water_heater
-
-          - if:
-              - condition: template
-                value_template: "{{ v_status_helper != '' }}"
-            then:
-              - action: input_text.set_value
-                target:
-                  entity_id: !input status_helper
-                data:
-                  value: >-
-                    Morning Reset: {{ v_evening_temp }}°F at {{ now().strftime('%I:%M %p') }} (Lower recovered to {{ states(v_lower_sensor) }}°F)
 
       # =========================================================================
       # Stage 2: Daytime Solar Soak / Baseline
@@ -266,16 +235,6 @@ action:
                       name: "HPWH Manager"
                       message: "Solar Boost: {{ v_solar_temp }}°F (Forecast: {{ states(v_solar_sensor) }} kWh)"
                       entity_id: !input water_heater
-                  - if:
-                      - condition: template
-                        value_template: "{{ v_status_helper != '' }}"
-                    then:
-                      - action: input_text.set_value
-                        target:
-                          entity_id: !input status_helper
-                        data:
-                          value: >-
-                            Solar Boost: {{ v_solar_temp }}°F at {{ now().strftime('%I:%M %p') }} (Forecast: {{ states(v_solar_sensor) }} kWh)
 
             # Low solar forecast
             default:
@@ -289,16 +248,6 @@ action:
                   name: "HPWH Manager"
                   message: "Cloudy Baseline: {{ v_cloudy_temp }}°F (Forecast: {{ states(v_solar_sensor) }} kWh)"
                   entity_id: !input water_heater
-              - if:
-                  - condition: template
-                    value_template: "{{ v_status_helper != '' }}"
-                then:
-                  - action: input_text.set_value
-                    target:
-                      entity_id: !input status_helper
-                    data:
-                      value: >-
-                        Cloudy Baseline: {{ v_cloudy_temp }}°F at {{ now().strftime('%I:%M %p') }} (Forecast: {{ states(v_solar_sensor) }} kWh)
 
       # =========================================================================
       # Stage 3: Evening Reset
@@ -317,15 +266,5 @@ action:
               name: "HPWH Manager"
               message: "Evening Reset: Set to {{ v_evening_temp }}°F"
               entity_id: !input water_heater
-          - if:
-              - condition: template
-                value_template: "{{ v_status_helper != '' }}"
-            then:
-              - action: input_text.set_value
-                target:
-                  entity_id: !input status_helper
-                data:
-                  value: >-
-                    Evening Reset: Set to {{ v_evening_temp }}°F at {{ now().strftime('%I:%M %p') }}
 
 mode: restart
