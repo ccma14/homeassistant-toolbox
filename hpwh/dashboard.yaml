@@ -12,7 +12,6 @@
 #   - sensor.water_heater_upper_tank_temperature
 #   - sensor.water_heater_lower_tank_temperature
 #   - sensor.solcast_pv_forecast_forecast_today
-#   - input_text.water_heater_last_action
 # Adjust any entity IDs to match your setup if named differently.
 
 type: vertical-stack
@@ -75,11 +74,12 @@ cards:
         name: Solar Forecast Today
         icon: mdi:solar-power
 
-  # 4. Latest Setpoint Change / Automation Log
-  - type: markdown
-    content: >-
-      **Latest Action:**  
-      {{ states('input_text.water_heater_last_action') | default('No actions recorded yet today.', true) }}
+  # 4. Recent Automation Activity (Native Home Assistant Logbook)
+  - type: logbook
+    title: Automation Activity
+    entities:
+      - climate.water_heater_econet_hpwh
+    hours_to_show: 24
 
   # 5. Quick Manual Overrides
   - type: horizontal-stack

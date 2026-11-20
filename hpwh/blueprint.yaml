@@ -7,7 +7,7 @@ blueprint:
     2) Daytime Solar Soak: Pre-heats the tank to a high setpoint (e.g. 140°F) on high solar forecast days,
        or restores baseline (e.g. 125°F) on cloudy days.
     3) Evening Reset: Lowers setpoint (e.g. 120°F) to prevent compressor cycling on grid power overnight.
-    4) Dashboard Logging: Optionally updates an input_text helper with readable status messages.
+    4) Built-in Logging: Logs all actions to the native Home Assistant Logbook (and optionally updates an input_text helper).
   domain: automation
   input:
     water_heater:
@@ -137,7 +137,7 @@ blueprint:
 
     status_helper:
       name: "(Optional) Status Logging Helper"
-      description: "An optional input_text helper to record human-readable status updates for dashboards."
+      description: "An optional input_text helper if you wish to record human-readable status updates to an entity."
       default: ""
       selector:
         entity:
@@ -194,6 +194,12 @@ action:
             data:
               temperature: "{{ target_temp }}"
 
+          - action: logbook.log
+            data:
+              name: "HPWH Manager"
+              message: "Morning Boost: Set to {{ target_temp }}°F (Lower: {{ states(v_lower_sensor) }}°F)"
+              entity_id: !input water_heater
+
           - if:
               - condition: template
                 value_template: "{{ v_status_helper != '' }}"
@@ -218,6 +224,12 @@ action:
               entity_id: !input water_heater
             data:
               temperature: !input evening_target_temperature
+
+          - action: logbook.log
+            data:
+              name: "HPWH Manager"
+              message: "Morning Reset: {{ v_evening_temp }}°F (Lower recovered to {{ states(v_lower_sensor) }}°F)"
+              entity_id: !input water_heater
 
           - if:
               - condition: template
@@ -249,6 +261,11 @@ action:
                       entity_id: !input water_heater
                     data:
                       temperature: !input solar_target_temperature
+                  - action: logbook.log
+                    data:
+                      name: "HPWH Manager"
+                      message: "Solar Boost: {{ v_solar_temp }}°F (Forecast: {{ states(v_solar_sensor) }} kWh)"
+                      entity_id: !input water_heater
                   - if:
                       - condition: template
                         value_template: "{{ v_status_helper != '' }}"
@@ -267,6 +284,11 @@ action:
                   entity_id: !input water_heater
                 data:
                   temperature: !input cloudy_target_temperature
+              - action: logbook.log
+                data:
+                  name: "HPWH Manager"
+                  message: "Cloudy Baseline: {{ v_cloudy_temp }}°F (Forecast: {{ states(v_solar_sensor) }} kWh)"
+                  entity_id: !input water_heater
               - if:
                   - condition: template
                     value_template: "{{ v_status_helper != '' }}"
@@ -274,9 +296,9 @@ action:
                   - action: input_text.set_value
                     target:
                       entity_id: !input status_helper
-                        data:
-                          value: >-
-                            Cloudy Baseline: {{ v_cloudy_temp }}°F at {{ now().strftime('%I:%M %p') }} (Forecast: {{ states(v_solar_sensor) }} kWh)
+                    data:
+                      value: >-
+                        Cloudy Baseline: {{ v_cloudy_temp }}°F at {{ now().strftime('%I:%M %p') }} (Forecast: {{ states(v_solar_sensor) }} kWh)
 
       # =========================================================================
       # Stage 3: Evening Reset
@@ -290,6 +312,11 @@ action:
               entity_id: !input water_heater
             data:
               temperature: !input evening_target_temperature
+          - action: logbook.log
+            data:
+              name: "HPWH Manager"
+              message: "Evening Reset: Set to {{ v_evening_temp }}°F"
+              entity_id: !input water_heater
           - if:
               - condition: template
                 value_template: "{{ v_status_helper != '' }}"
