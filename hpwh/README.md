@@ -6,11 +6,13 @@ A complete, 24-hour lifecycle management system for Heat Pump Water Heaters (suc
 
 ## The Challenge
 
-Heat pump water heaters suffer from severe **thermal stratification** after evening showers:
-* Incoming cold water enters the bottom of the tank via the dip tube.
-* Hot water rises and floats at the top.
-* Because the upper tank temperature sensor remains near setpoint, the heat pump's internal thermostat never triggers overnight.
-* On a subsequent low-solar or cloudy day without an early solar boost, morning showers can run lukewarm or cold.
+To avoid draining home battery storage or drawing grid power overnight, the heat pump's setpoint is lowered to 120°F in the evening (16:00 PM), relying on the tank as a pre-charged thermal battery.
+
+However, evening water usage (showers, dishes, laundry) introduces severe **thermal stratification**:
+* Cold municipal water enters the bottom of the tank via the dip tube, displacing hot water in the lower ~60% of the volume.
+* Hot water floats at the top, keeping the upper tank temperature sensor at or near the 120°F reduced setpoint.
+* Because the upper sensor satisfies the thermostat, the heat pump never triggers overnight.
+* By morning shower time (06:30–08:00 AM), only a thin layer of hot water remains. The first morning shower quickly exhausts this top layer and draws cold water from below—hours before the 10:00 AM daytime solar boost window could ever engage.
 
 ![Tank Stratification](../images/tank_stratification.png)
 *Figure 1: Widening gap between upper and lower tank temperatures following evening water draws.*
