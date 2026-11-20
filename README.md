@@ -1,6 +1,6 @@
 # Home Assistant Toolbox
 
-A collection of Home Assistant automation blueprints, template sensors, and dashboard widgets maintained by [@ccma14](https://github.com/ccma14).
+A collection of Home Assistant automation blueprints, template sensors, and tools maintained by [@ccma14](https://github.com/ccma14).
 
 ---
 
@@ -9,11 +9,21 @@ A collection of Home Assistant automation blueprints, template sensors, and dash
 A complete package for 24-hour lifecycle management of Heat Pump Water Heaters (such as Rheem EcoNet). Overcomes thermal stratification by conditionally boosting early morning temperatures before showers, pre-heats with solar during the day, and resets in the evening.
 
 ### Components
-1. **Automation Blueprint:** `blueprints/automation/hpwh_daily_manager.yaml`
-2. **True State of Charge (SoC) Template Sensor:** `templates/water_heater_soc.yaml`
+1. **Automation Blueprint:** [`blueprints/automation/hpwh_daily_manager.yaml`](blueprints/automation/hpwh_daily_manager.yaml)
+2. **True State of Charge (SoC) Template Sensor:** [`templates/water_heater_soc.yaml`](templates/water_heater_soc.yaml)
 
-#### Requirements
-- Heat pump water heater integration in Home Assistant (e.g., ESPHome EcoNet).
-- Upper and lower tank temperature sensors.
-- Solar PV forecast sensor (e.g., Solcast).
-- Thermostatic mixing valve installed on tank outlet for safe 140°F storage.
+### Prerequisites & Integrations
+- **[esphome-econet](https://github.com/esphome-econet/esphome-econet):** Local RS-485 interface for Rheem / Ruud EcoNet water heaters.
+- **[Solcast Solar Integration](https://github.com/BJReplay/ha-solcast-solar):** Provides daily solar production forecasts in kWh.
+- **Thermostatic Mixing Valve:** Installed at the tank hot water outlet to safely temper 140°F storage water down to fixture temperatures.
+- **[Home Assistant Blueprints](https://www.home-assistant.io/docs/blueprint/):** Official documentation on importing and configuring automation blueprints.
+
+---
+
+## License
+
+Copyright (c) 2026 Christian Czezatke.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License in the [LICENSE](LICENSE) file or at:
+
+http://www.apache.org/licenses/LICENSE-2.0
