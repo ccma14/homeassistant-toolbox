@@ -49,10 +49,17 @@ However, occasional heavy evening water usage (e.g. late showers, baths, or dish
 
 The automation blueprint requires **zero extra helpers and zero YAML configuration**. It uses your existing water heater climate entity and temperature sensors:
 
-#### Option A: Direct Import via GitHub URL (Recommended)
+#### Option A: 1-Click Import via My Home Assistant (Recommended)
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2Fccma14%2Fhomeassistant-toolbox%2Fmain%2Fhpwh%2Fblueprint.yaml)
+
+*Or import manually via URL:*
 1. In Home Assistant, go to **Settings > Automations & Scenes > Blueprints**.
 2. Click **Import Blueprint** (bottom right).
-3. Paste the raw GitHub URL for [`blueprint.yaml`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/blueprint.yaml).
+3. Paste the raw GitHub URL:
+   ```text
+   https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/blueprint.yaml
+   ```
 4. Click **Preview** and then **Import Blueprint**.
 
 #### Option B: Manual File Placement
