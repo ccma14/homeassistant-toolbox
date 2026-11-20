@@ -1,7 +1,7 @@
 blueprint:
   name: "Solar & Stratification Heat Pump Water Heater Manager"
   description: >-
-    Manages a Heat Pump Water Heater (such as a Rheem EcoNet HPWH) across a 24-hour cycle:
+    Manages a Heat Pump Water Heater (such as Rheem EcoNet, A.O. Smith, or custom ESPHome/Modbus setups) across a 24-hour cycle:
     1) Early Morning Assurance: Conditionally boosts setpoint if overnight usage caused lower-tank
        thermal stratification, guaranteeing hot morning showers without burning unnecessary grid power.
     2) Daytime Solar Soak: Pre-heats the tank to a high setpoint (e.g. 140°F) on high solar forecast days,
