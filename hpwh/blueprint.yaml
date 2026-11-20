@@ -3,10 +3,10 @@ blueprint:
   description: >-
     Manages a Heat Pump Water Heater (such as Rheem EcoNet, A.O. Smith, or custom ESPHome/Modbus setups) across a 24-hour cycle:
     1) Early Morning Assurance: Conditionally boosts setpoint if overnight usage caused lower-tank
-       thermal stratification, guaranteeing hot morning showers without burning unnecessary grid power.
+       thermal stratification, guaranteeing hot morning showers without unnecessarily draining home batteries or drawing grid power.
     2) Daytime Solar Soak: Pre-heats the tank to a high setpoint (e.g. 140°F) on high solar forecast days,
        or restores baseline (e.g. 125°F) on cloudy days.
-    3) Evening Reset: Lowers setpoint (e.g. 120°F) to prevent compressor cycling on grid power overnight.
+    3) Evening Reset: Lowers setpoint (e.g. 120°F) to prevent compressor cycling overnight on home battery storage or grid power.
     4) Native Logging: Automatically logs all actions to Home Assistant's native Logbook.
   domain: automation
   input:
@@ -125,7 +125,7 @@ blueprint:
 
     evening_target_temperature:
       name: "Evening Reset Target Temperature"
-      description: "Target temperature set in the evening to prevent overnight grid cycling."
+      description: "Target temperature set in the evening to prevent overnight cycling on home battery storage or grid power."
       default: 120
       selector:
         number:

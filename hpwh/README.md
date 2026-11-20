@@ -23,8 +23,8 @@ Heat pump water heaters suffer from severe **thermal stratification** after even
 ## The Solution
 
 1. **Early Morning Assurance (06:30 AM):** Evaluates the lower tank temperature. If depleted (< 102°F), it calculates a dynamic overdrive setpoint (`upper + 4°F`, up to 140°F) to force the compressor on, runs until the lower tank reaches a safe reserve (112°F), and resets back to baseline.
-2. **Daytime Solar Soak (10:00 AM):** Checks today's solar PV forecast. If high (> 25 kWh), boosts setpoint to 140°F to store free solar thermal energy. If low, maintains a reliable 125°F baseline.
-3. **Evening Reset (16:00 PM):** Drops setpoint to 120°F to prevent compressor cycling on expensive evening/overnight grid power.
+2. **Daytime Solar Soak (10:00 AM):** Checks today's solar PV forecast. If high (> 25 kWh), boosts setpoint to 140°F to store free solar energy as thermal storage. If low, maintains a reliable 125°F baseline.
+3. **Evening Reset (16:00 PM):** Drops setpoint to 120°F to prevent the compressor from cycling overnight on home battery storage or grid power, treating the water heater as a pre-charged thermal battery.
 4. **Native Logbook Integration:** Automatically logs every setpoint change and trigger event to Home Assistant's native Logbook with zero helpers or setup required.
 5. **(Optional) True State of Charge (SoC):** A 40/60 volumetric weighted thermal storage sensor that tracks real usable energy and estimated shower gallons.
 6. **(Optional) Native Dashboard Card:** A complete, glanceable Lovelace card with SoC gauge, operating status, tank temperatures, and live event log.
