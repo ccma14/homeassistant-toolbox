@@ -1,6 +1,6 @@
 # ♨️ Heat Pump Water Heater Manager
 
-A complete, 24-hour lifecycle management system for Heat Pump Water Heaters (such as Rheem EcoNet, A.O. Smith, or custom ESPHome/Modbus setups) designed to overcome thermal stratification and maximize solar self-consumption.
+A complete, 24-hour lifecycle management system for Heat Pump Water Heaters (such as Rheem EcoNet via ESPHome, or custom dual-sensor setups) designed to overcome thermal stratification and maximize solar self-consumption.
 
 ---
 
@@ -134,6 +134,6 @@ The package includes a dedicated, ultra-compact Lovelace card featuring an SVG b
 
 ## Safety & System Requirements
 * **Thermostatic Mixing Valve:** A thermostatic tempering valve installed at the water heater outlet is **strongly recommended** when boosting storage to 140°F. This protects plumbing fixtures and prevents scald risk while giving you the full benefit of thermal energy storage.
-* **Dual Tank Temperature Sensors Required:** The stratification detection and morning assurance logic rely on independent upper and lower tank temperature measurements.
-  * **Rheem EcoNet:** The official Home Assistant cloud EcoNet integration only exposes a single aggregated temperature (the upper thermistor). To expose both internal sensors, use the open-source [**`esphome-econet`**](https://github.com/esphome-econet/esphome-econet) project, which connects directly to the water heater's internal serial bus to provide 100% local control with discrete upper and lower temperature sensors (`sensor.water_heater_upper_tank_temperature` and `sensor.water_heater_lower_tank_temperature`).
-  * **Other Equipment:** Any system providing climate controls and upper/lower tank temperatures (e.g. Modbus, Stiebel Eltron, SANCO2, A.O. Smith, or external 1-Wire DS18B20 sensors) is fully compatible.
+* **Dual Tank Temperature Sensors Required:** Stratification detection and morning assurance rely on having both upper and lower tank temperature measurements.
+  * **Rheem EcoNet Water Heaters (Recommended):** The official Home Assistant cloud EcoNet integration only exposes a single aggregated temperature. To expose both built-in sensors, use the open-source [**`esphome-econet`**](https://github.com/esphome-econet/esphome-econet) project, which connects directly to the water heater's internal serial bus to provide 100% local control with discrete upper and lower temperature sensors (`sensor.water_heater_upper_tank_temperature` and `sensor.water_heater_lower_tank_temperature`).
+  * **Other Equipment / External Probes:** You can experiment with external temperature sensors (e.g. 1-Wire DS18B20 probes placed under the upper and lower service panels), though surface readings will have more thermal lag than built-in sensors.
