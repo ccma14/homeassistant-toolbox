@@ -4,11 +4,17 @@ A complete, 24-hour lifecycle management system for Heat Pump Water Heaters (suc
 
 ---
 
-## The Challenge
+## The Concept: The Water Heater as a Thermal Battery
 
-To avoid draining home battery storage or drawing grid power overnight, the heat pump's setpoint is lowered to 120°F in the evening (4:00 PM), relying on the tank as a pre-charged thermal battery.
+A 65-gallon Heat Pump Water Heater is more than an appliance—it is a zero-degradation, highly efficient **~3.2 kWh thermal battery**.
 
-However, occasional heavy evening water usage (e.g. late showers, baths, or dishwashing) introduces severe **thermal stratification**:
+Operating at a Coefficient of Performance (COP) around 3.5, superheating the tank from 120°F to 140°F during peak midday solar absorbs over 3 kWh of thermal energy while consuming under 1 kWh of solar electricity. By dropping the setpoint in the evening (ahead of the solar ramp-down), the household avoids running the compressor during peak evening demand hours and prevents draining stationary home battery storage overnight—eliminating chemical battery cycle degradation and round-trip conversion losses.
+
+---
+
+## The Challenge: Stratification & The "False Full" Thermostat
+
+While cycling the tank as a thermal battery is economically ideal, occasional evening water draws (e.g. late showers, baths, or dishwashing) introduce severe **thermal stratification**:
 * Cold municipal water enters the bottom of the tank via the dip tube, displacing hot water in the lower ~60% of the volume.
 * Hot water floats at the top, keeping the upper tank temperature sensor at or near the 120°F reduced setpoint.
 * Because the upper sensor satisfies the thermostat, the heat pump never triggers overnight.
