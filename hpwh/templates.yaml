@@ -1,5 +1,5 @@
 # ==============================================================================
-# Heat Pump Water Heater: True State of Charge (SoC) Template Sensor
+# Heat Pump Water Heater: State of Charge (SoC) Template Sensors
 # ==============================================================================
 # Configuration:
 # If your sensor names differ from the defaults below, use Find & Replace:
