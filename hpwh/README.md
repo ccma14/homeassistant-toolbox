@@ -6,9 +6,9 @@ A complete, 24-hour lifecycle management system for Heat Pump Water Heaters (suc
 
 ## The Concept: The Water Heater as a Thermal Battery
 
-A 65-gallon Heat Pump Water Heater is more than an appliance—it is a zero-degradation, highly efficient **~3.2 kWh thermal battery**.
+A 65-gallon Heat Pump Water Heater is a zero-degradation thermal battery capable of storing **nearly 12 kWh of thermal energy**—rivaling the usable capacity of an entire residential chemical battery.
 
-Operating at a Coefficient of Performance (COP) around 3.5, superheating the tank from 120°F to 140°F during peak midday solar absorbs over 3 kWh of thermal energy while consuming under 1 kWh of solar electricity. By dropping the setpoint in the evening (ahead of the solar ramp-down), the household avoids running the compressor during peak evening demand hours and prevents draining stationary home battery storage overnight—eliminating chemical battery cycle degradation and round-trip conversion losses.
+Operating at a Coefficient of Performance (COP) around 3.5, banking that energy requires under 3.5 kWh of solar electricity, while a 140°F midday boost packs in an extra 3.2 kWh of discretionary thermal reserve. By boosting during peak solar hours and dropping the setpoint ahead of the evening solar ramp-down, the household coasts through peak demand hours and overnight entirely on stored heat—sparing stationary home battery storage from high-draw inductive cycling and round-trip conversion losses.
 
 ---
 
