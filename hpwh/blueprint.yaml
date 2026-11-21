@@ -55,7 +55,7 @@ blueprint:
     morning_boost_time:
       name: "Morning Assurance Time"
       description: "Time to check if the lower tank needs pre-shower recovery."
-      default: "06:30:00"
+      default: "04:30:00"
       selector:
         time: {}
 
