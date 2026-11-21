@@ -38,12 +38,28 @@ template:
           {# lower ~60% of tank; lower sensor reflects cold water influx) #}
           {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
 
-          {# Compute SoC relative to cold inlet and normal 120F target #}
-          {# When solar-boosted to 140F, SoC can exceed 100% (supercharged) #}
+          {# Compute SoC relative to cold inlet and normal 120F target (strictly capped at 100%) #}
+          {# Surplus energy above 100% (e.g. solar boost to 140F) is tracked in solar_boost #}
           {% set soc = ((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100 %}
-          {{ [ [ soc | round(1), 0 ] | max, 135 ] | min }}
+          {{ [ [ soc | round(0), 0 ] | max, 100 ] | min }}
 
         attributes:
+          solar_boost: >-
+            {# Thermal energy surplus above 100% capacity (0% to ~36% during 140F solar boost) #}
+            {% set cold_inlet = 65.0 %}
+            {% set target_baseline = 120.0 %}
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
+            {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
+            {% set raw_soc = ((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100 %}
+            {{ [ (raw_soc - 100) | round(0), 0 ] | max }}
+          raw_soc: >-
+            {% set cold_inlet = 65.0 %}
+            {% set target_baseline = 120.0 %}
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
+            {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
+            {{ (((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100) | round(1) }}
           upper_temperature: >-
             {{ states('sensor.water_heater_upper_tank_temperature') | float(0) }}
           lower_temperature: >-
@@ -56,34 +72,53 @@ template:
             {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(0) %}
             {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(0) %}
             {{ (upper - lower) | round(1) }}
-          usable_shower_gallons_est: >-
-            {# Estimated gallons of 105F shower water available in tank #}
-            {% set cold_inlet = 65.0 %}
-            {% set shower_temp = 105.0 %}
-            {% set tank_gallons = 65.0 %}
-            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
-            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(120) %}
-            {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
-            {% if avg_temp > cold_inlet %}
-              {% set total_heat_btu = tank_gallons * 8.33 * (avg_temp - cold_inlet) %}
-              {% set gal_at_105 = total_heat_btu / (8.33 * (shower_temp - cold_inlet)) %}
-              {{ [gal_at_105 | round(0), 0] | max }}
-            {% else %}
-              0
-            {% endif %}
-          usable_shower_minutes_est: >-
-            {# Estimated minutes of 105F shower available at 2.0 GPM flow rate #}
-            {% set cold_inlet = 65.0 %}
-            {% set shower_temp = 105.0 %}
-            {% set tank_gallons = 65.0 %}
-            {% set shower_gpm = 2.0 %}
-            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
-            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(120) %}
-            {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
-            {% if avg_temp > cold_inlet %}
-              {% set total_heat_btu = tank_gallons * 8.33 * (avg_temp - cold_inlet) %}
-              {% set gal_at_105 = total_heat_btu / (8.33 * (shower_temp - cold_inlet)) %}
-              {{ [(gal_at_105 / shower_gpm) | round(0), 0] | max }}
-            {% else %}
-              0
-            {% endif %}
+
+      - name: "Water Heater Shower Minutes"
+        unique_id: water_heater_shower_minutes
+        unit_of_measurement: "min"
+        state_class: measurement
+        icon: mdi:shower-head
+        state: >-
+          {# Estimated minutes of 105F shower available at 2.0 GPM flow rate #}
+          {% set cold_inlet = 65.0 %}
+          {% set shower_temp = 105.0 %}
+          {% set tank_gallons = 65.0 %}
+          {% set shower_gpm = 2.0 %}
+          {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
+          {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(120) %}
+          {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
+          {% if avg_temp > cold_inlet %}
+            {% set total_heat_btu = tank_gallons * 8.33 * (avg_temp - cold_inlet) %}
+            {% set gal_at_105 = total_heat_btu / (8.33 * (shower_temp - cold_inlet)) %}
+            {{ [(gal_at_105 / shower_gpm) | round(0), 0] | max }}
+          {% else %}
+            0
+          {% endif %}
+        attributes:
+          flow_rate_gpm: 2.0
+          delivery_temperature: 105.0
+          cold_inlet_temperature: 65.0
+
+      - name: "Water Heater Shower Gallons"
+        unique_id: water_heater_shower_gallons
+        unit_of_measurement: "gal"
+        state_class: measurement
+        icon: mdi:water-boiler
+        state: >-
+          {# Estimated gallons of 105F shower water available in tank #}
+          {% set cold_inlet = 65.0 %}
+          {% set shower_temp = 105.0 %}
+          {% set tank_gallons = 65.0 %}
+          {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
+          {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(120) %}
+          {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
+          {% if avg_temp > cold_inlet %}
+            {% set total_heat_btu = tank_gallons * 8.33 * (avg_temp - cold_inlet) %}
+            {% set gal_at_105 = total_heat_btu / (8.33 * (shower_temp - cold_inlet)) %}
+            {{ [gal_at_105 | round(0), 0] | max }}
+          {% else %}
+            0
+          {% endif %}
+        attributes:
+          delivery_temperature: 105.0
+          cold_inlet_temperature: 65.0

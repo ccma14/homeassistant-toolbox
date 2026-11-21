@@ -10,6 +10,10 @@ class HpwhCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._initialized = false;
     this._elements = {};
+    this._displayUnit = null;
+    this._latestLog = null;
+    this._lastLogFetch = 0;
+    this._prevLastTriggered = null;
   }
 
   setConfig(config) {
@@ -52,6 +56,14 @@ class HpwhCard extends HTMLElement {
           selector: { entity: { domain: "sensor" } }
         },
         {
+          name: "shower_minutes_sensor",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
+          name: "shower_gallons_sensor",
+          selector: { entity: { domain: "sensor" } }
+        },
+        {
           name: "upper_temp_sensor",
           selector: { entity: { domain: "sensor", device_class: "temperature" } }
         },
@@ -89,6 +101,8 @@ class HpwhCard extends HTMLElement {
       entity: "climate.water_heater",
       power_sensor: "sensor.water_heater_power",
       soc_sensor: "sensor.water_heater_state_of_charge",
+      shower_minutes_sensor: "sensor.water_heater_shower_minutes",
+      shower_gallons_sensor: "sensor.water_heater_shower_gallons",
       upper_temp_sensor: "sensor.water_heater_upper_tank_temperature",
       lower_temp_sensor: "sensor.water_heater_lower_tank_temperature",
       automation_entity: "automation.solar_stratification_heat_pump_water_heater_manager"
@@ -273,6 +287,12 @@ class HpwhCard extends HTMLElement {
           margin-bottom: 12px;
           cursor: pointer;
           transition: background 0.2s, color 0.2s;
+          overflow: hidden;
+        }
+        .auto-row span {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .auto-row:hover {
           background: rgba(255, 255, 255, 0.08);
@@ -323,7 +343,7 @@ class HpwhCard extends HTMLElement {
               </svg>
               <div class="soc-label" id="soc-label">--%</div>
             </div>
-            <div class="soc-sub">Thermal Storage</div>
+            <div class="soc-sub" id="soc-sub">Thermal Storage</div>
           </div>
 
           <div class="status-stack">
@@ -347,7 +367,7 @@ class HpwhCard extends HTMLElement {
             <span class="glance-sub">Lower Tank</span>
             <span class="glance-val" id="lower-val">--</span>
           </div>
-          <div class="glance-item" id="click-shower" title="Click to view Shower Buffer details">
+          <div class="glance-item" id="click-shower" title="Click to view Shower Buffer history">
             <span class="glance-sub">Shower Buffer</span>
             <span class="glance-val" id="shower-val">--</span>
           </div>
@@ -373,12 +393,14 @@ class HpwhCard extends HTMLElement {
       title: this.shadowRoot.getElementById("card-title"),
       socMeter: this.shadowRoot.getElementById("soc-meter"),
       socLabel: this.shadowRoot.getElementById("soc-label"),
+      socSub: this.shadowRoot.getElementById("soc-sub"),
       statusVal: this.shadowRoot.getElementById("status-val"),
       targetVal: this.shadowRoot.getElementById("target-val"),
       upperVal: this.shadowRoot.getElementById("upper-val"),
       lowerVal: this.shadowRoot.getElementById("lower-val"),
       showerVal: this.shadowRoot.getElementById("shower-val"),
       showerItem: this.shadowRoot.getElementById("click-shower"),
+      autoRow: this.shadowRoot.getElementById("click-auto"),
       autoText: this.shadowRoot.getElementById("auto-text")
     };
 
@@ -403,8 +425,28 @@ class HpwhCard extends HTMLElement {
       this._fireMoreInfo(this._config.lower_temp_sensor);
     });
 
-    this.shadowRoot.getElementById("click-shower")?.addEventListener("click", () => {
-      this._fireMoreInfo(this._config.soc_sensor);
+    const showerItem = this.shadowRoot.getElementById("click-shower");
+    showerItem?.addEventListener("click", () => {
+      const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
+      const showMinutes = activeUnit !== "gallons";
+
+      const minSensorId = this._config.shower_minutes_sensor || this._config.shower_sensor || "sensor.water_heater_shower_minutes";
+      const galSensorId = this._config.shower_gallons_sensor || "sensor.water_heater_shower_gallons";
+
+      let targetSensor;
+      if (showMinutes) {
+        targetSensor = this._hass?.states[minSensorId] ? minSensorId : (this._hass?.states["sensor.water_heater_shower_buffer"] ? "sensor.water_heater_shower_buffer" : (this._config.soc_sensor || this._config.entity));
+      } else {
+        targetSensor = this._hass?.states[galSensorId] ? galSensorId : (this._hass?.states[minSensorId] ? minSensorId : (this._config.soc_sensor || this._config.entity));
+      }
+      this._fireMoreInfo(targetSensor);
+    });
+
+    showerItem?.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
+      this._displayUnit = activeUnit === "minutes" ? "gallons" : "minutes";
+      this._updateContent();
     });
 
     this.shadowRoot.getElementById("click-auto")?.addEventListener("click", () => {
@@ -426,6 +468,87 @@ class HpwhCard extends HTMLElement {
     });
   }
 
+  async _fetchLogbook() {
+    if (!this._hass || !this._config) return;
+    const now = Date.now();
+    if (now - this._lastLogFetch < 10000) return;
+    this._lastLogFetch = now;
+
+    const entities = [];
+    if (this._config.entity) entities.push(this._config.entity);
+    if (this._config.automation_entity) entities.push(this._config.automation_entity);
+    if (!entities.length) return;
+
+    // Look back up to 48 hours for the most recent logbook entry
+    const startTime = new Date(now - 48 * 3600 * 1000).toISOString();
+
+    try {
+      const events = await this._hass.callWS({
+        type: "logbook/get_events",
+        start_time: startTime,
+        entity_ids: entities
+      });
+
+      if (Array.isArray(events) && events.length > 0) {
+        // Filter events logged by HPWH Manager or matching our automation
+        const hpwhEvents = events.filter(e =>
+          e.name === "HPWH Manager" ||
+          e.entity_id === this._config.automation_entity ||
+          (e.message && (e.message.includes("Boost") || e.message.includes("Reset") || e.message.includes("Baseline") || e.message.includes("Morning")))
+        );
+
+        const targetEvents = hpwhEvents.length > 0 ? hpwhEvents : [];
+        const latest = targetEvents[targetEvents.length - 1];
+
+        if (latest && latest.message) {
+          let whenDate;
+          if (typeof latest.when === "number") {
+            whenDate = new Date(latest.when < 1e11 ? latest.when * 1000 : latest.when);
+          } else {
+            whenDate = new Date(latest.when);
+          }
+
+          this._latestLog = {
+            message: latest.message,
+            when: whenDate
+          };
+          const autoEntity = this._config.automation_entity ? this._hass.states[this._config.automation_entity] : null;
+          this._updateAutoText(autoEntity);
+        }
+      }
+    } catch (err) {
+      console.warn("hpwh-card: logbook fetch error", err);
+    }
+  }
+
+  _updateAutoText(autoEntity) {
+    if (!this._elements.autoText) return;
+
+    if (this._latestLog && this._latestLog.message) {
+      const diffMins = Math.round((Date.now() - this._latestLog.when.getTime()) / 60000);
+      let timeStr = "just now";
+      if (diffMins >= 60) {
+        const diffHours = Math.round(diffMins / 60);
+        timeStr = `${diffHours} hr ago`;
+      } else if (diffMins >= 1) {
+        timeStr = `${diffMins} min ago`;
+      }
+
+      const fullText = `⚡ ${this._latestLog.message} • ${timeStr}`;
+      this._elements.autoText.textContent = fullText;
+      if (this._elements.autoRow) {
+        this._elements.autoRow.title = `${this._latestLog.message} (${this._latestLog.when.toLocaleTimeString()}) — Click to view automation history`;
+      }
+    } else if (autoEntity && autoEntity.attributes && autoEntity.attributes.last_triggered) {
+      const last = new Date(autoEntity.attributes.last_triggered);
+      const diffMins = Math.round((Date.now() - last.getTime()) / 60000);
+      let timeStr = diffMins < 60 ? `${Math.max(diffMins, 1)} min ago` : `${Math.round(diffMins / 60)} hr ago`;
+      this._elements.autoText.textContent = `⚡ Last Cycle: ${timeStr}`;
+    } else {
+      this._elements.autoText.textContent = "⚡ Automation: Active & monitoring";
+    }
+  }
+
   _updateContent() {
     if (!this._hass || !this._config || !this._elements.title) return;
 
@@ -435,6 +558,10 @@ class HpwhCard extends HTMLElement {
     const upperEntity = this._config.upper_temp_sensor ? this._hass.states[this._config.upper_temp_sensor] : null;
     const lowerEntity = this._config.lower_temp_sensor ? this._hass.states[this._config.lower_temp_sensor] : null;
     const autoEntity = this._config.automation_entity ? this._hass.states[this._config.automation_entity] : null;
+    const minSensorId = this._config.shower_minutes_sensor || this._config.shower_sensor || "sensor.water_heater_shower_minutes";
+    const galSensorId = this._config.shower_gallons_sensor || "sensor.water_heater_shower_gallons";
+    const minEntity = this._hass.states[minSensorId] || this._hass.states["sensor.water_heater_shower_buffer"] || null;
+    const galEntity = this._hass.states[galSensorId] || null;
 
     // Update Title
     this._elements.title.textContent = this._config.title || "♨️ Heat Pump Water Heater";
@@ -476,26 +603,33 @@ class HpwhCard extends HTMLElement {
     const targetTemp = climateEntity?.attributes?.temperature !== undefined ? `${climateEntity.attributes.temperature}°` : "--";
     this._elements.targetVal.textContent = targetTemp;
 
-    // Automation activity text
-    let autoText = "⚡ Automation: Active & monitoring";
-    if (autoEntity && autoEntity.attributes && autoEntity.attributes.last_triggered) {
-      const last = new Date(autoEntity.attributes.last_triggered);
-      const diffMins = Math.round((Date.now() - last.getTime()) / 60000);
-      if (diffMins < 60) {
-        autoText = `⚡ Last Cycle: ${Math.max(diffMins, 1)} min ago`;
-      } else {
-        const diffHours = Math.round(diffMins / 60);
-        autoText = `⚡ Last Cycle: ${diffHours} hr ago`;
-      }
+    // Automation activity text & live logbook fetch
+    const lastTriggered = autoEntity?.attributes?.last_triggered;
+    if (!this._latestLog || (lastTriggered && lastTriggered !== this._prevLastTriggered)) {
+      this._prevLastTriggered = lastTriggered;
+      this._fetchLogbook();
     }
-    this._elements.autoText.textContent = autoText;
+    this._updateAutoText(autoEntity);
 
-    // SoC Gauge
+    // SoC Gauge & Boost
     let socVal = 100;
     let socText = "--%";
+    let boostVal = 0;
+
     if (socEntity && !isNaN(parseFloat(socEntity.state))) {
       socVal = parseFloat(socEntity.state);
-      socText = `${Math.round(socVal)}%`;
+      // Cap nominal state strictly at 100%
+      const displaySoc = Math.min(Math.round(socVal), 100);
+      socText = `${displaySoc}%`;
+
+      // Check for solar boost surplus
+      if (socEntity.attributes && socEntity.attributes.solar_boost !== undefined) {
+        boostVal = Math.round(parseFloat(socEntity.attributes.solar_boost));
+      } else if (socEntity.attributes && socEntity.attributes.raw_soc !== undefined) {
+        boostVal = Math.max(Math.round(parseFloat(socEntity.attributes.raw_soc) - 100), 0);
+      } else if (socVal > 100) {
+        boostVal = Math.round(socVal - 100);
+      }
     }
 
     let gaugeColor = "#4caf50";
@@ -503,45 +637,85 @@ class HpwhCard extends HTMLElement {
       gaugeColor = "#f44336";
     } else if (socVal < 90) {
       gaugeColor = "#ff9800";
+    } else if (boostVal > 0) {
+      gaugeColor = "#ffb300"; // Solar Gold
     }
 
-    const normalizedPercent = Math.min(Math.max((socVal / 135) * 100, 0), 100);
+    const normalizedPercent = Math.min(Math.max(socVal, 0), 100);
     const strokeDash = `${(normalizedPercent * 188.5) / 100} 188.5`;
 
     this._elements.socMeter.setAttribute("stroke-dasharray", strokeDash);
     this._elements.socMeter.style.stroke = gaugeColor;
     this._elements.socLabel.textContent = socText;
 
+    if (this._elements.socSub) {
+      if (boostVal > 0) {
+        this._elements.socSub.textContent = `+${boostVal}% Solar Boost`;
+        this._elements.socSub.style.color = "#ffb300";
+        this._elements.socSub.style.fontWeight = "600";
+      } else {
+        this._elements.socSub.textContent = "Thermal Storage";
+        this._elements.socSub.style.color = "";
+        this._elements.socSub.style.fontWeight = "";
+      }
+    }
+
     // Temperatures & Shower Buffer
     this._elements.upperVal.textContent = upperEntity ? `${Math.round(parseFloat(upperEntity.state))}°` : "--";
     this._elements.lowerVal.textContent = lowerEntity ? `${Math.round(parseFloat(lowerEntity.state))}°` : "--";
 
     // Shower Buffer (Gallons or Minutes)
-    const showMinutes = this._config.shower_display !== "gallons";
+    const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
+    const showMinutes = activeUnit !== "gallons";
     let showerValStr = "--";
-    let showerTooltip = "Click to view Shower Buffer details";
+    let showerTooltip = "Click for history graph, double-click to toggle units";
 
-    if (socEntity && socEntity.attributes) {
-      let gal = socEntity.attributes.usable_shower_gallons_est;
-      let min = socEntity.attributes.usable_shower_minutes_est;
+    let min;
+    let gal;
 
-      // Graceful fallback if only one attribute is present
-      if (min === undefined && gal !== undefined) {
-        min = Math.round(gal / 2.0);
-      } else if (gal === undefined && min !== undefined) {
-        gal = Math.round(min * 2.0);
+    if (minEntity && !isNaN(parseFloat(minEntity.state))) {
+      min = parseFloat(minEntity.state);
+    }
+    if (galEntity && !isNaN(parseFloat(galEntity.state))) {
+      gal = parseFloat(galEntity.state);
+    }
+
+    if (min === undefined && minEntity?.attributes?.usable_minutes !== undefined) {
+      min = parseFloat(minEntity.attributes.usable_minutes);
+    }
+    if (gal === undefined && minEntity?.attributes?.usable_gallons !== undefined) {
+      gal = parseFloat(minEntity.attributes.usable_gallons);
+    }
+    if (min === undefined && galEntity?.attributes?.usable_minutes !== undefined) {
+      min = parseFloat(galEntity.attributes.usable_minutes);
+    }
+    if (gal === undefined && galEntity?.attributes?.usable_gallons !== undefined) {
+      gal = parseFloat(galEntity.attributes.usable_gallons);
+    }
+
+    if (min === undefined && socEntity?.attributes?.usable_shower_minutes_est !== undefined) {
+      min = parseFloat(socEntity.attributes.usable_shower_minutes_est);
+    }
+    if (gal === undefined && socEntity?.attributes?.usable_shower_gallons_est !== undefined) {
+      gal = parseFloat(socEntity.attributes.usable_shower_gallons_est);
+    }
+
+    // Graceful fallback if only one unit is known
+    if (min === undefined && gal !== undefined) {
+      min = Math.round(gal / 2.0);
+    } else if (gal === undefined && min !== undefined) {
+      gal = Math.round(min * 2.0);
+    }
+
+    if (showMinutes) {
+      showerValStr = min !== undefined ? `${Math.round(min)} min` : "--";
+      if (gal !== undefined) {
+        showerTooltip = `Shower Buffer: ~${Math.round(min)} min (approx. ${Math.round(gal)} gal) — Click for minutes history graph, double-click to toggle units`;
       }
-
-      if (showMinutes) {
-        showerValStr = min !== undefined ? `${Math.round(min)} min` : "--";
-        if (gal !== undefined) {
-          showerTooltip = `Shower Buffer: ~${Math.round(min)} min (approx. ${Math.round(gal)} gal @ 2.0 GPM)`;
-        }
-      } else {
-        showerValStr = gal !== undefined ? `${Math.round(gal)} gal` : "--";
-        if (min !== undefined) {
-          showerTooltip = `Shower Buffer: ~${Math.round(gal)} gal (approx. ${Math.round(min)} min @ 2.0 GPM)`;
-        }
+    } else {
+      showerValStr = gal !== undefined ? `${Math.round(gal)} gal` : "--";
+      if (min !== undefined) {
+        showerTooltip = `Shower Buffer: ~${Math.round(gal)} gal (approx. ${Math.round(min)} min) — Click for gallons history graph, double-click to toggle units`;
       }
     }
 
