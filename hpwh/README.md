@@ -15,10 +15,7 @@ However, occasional heavy evening water usage (e.g. late showers, baths, or dish
 * Without intervention, only a thin layer of hot water remains at the top. When morning showers are taken, that top layer is quickly exhausted, drawing cold water from below—hours before the 10:00 AM daytime solar boost window could ever engage.
 
 ![Tank Stratification](images/tank_stratification.png)
-*Figure 1: Widening gap between upper and lower tank temperatures following evening water draws.*
-
-![Target Temperature Response](images/target_temperature_response.png)
-*Figure 2: Heat pump setpoint remains static while the lower tank drops into depleted temperatures.*
+*Widening gap between upper and lower tank temperatures following evening water draws.*
 
 ---
 
@@ -28,7 +25,7 @@ However, occasional heavy evening water usage (e.g. late showers, baths, or dish
 2. **Daytime Solar Soak (10:00 AM):** Checks today's solar PV forecast. If high (> 25 kWh), boosts setpoint to 140°F to store free solar energy as thermal storage. If low, maintains a reliable 125°F baseline.
 3. **Evening Reset (4:00 PM):** Drops setpoint to 120°F to prevent the compressor from cycling overnight on home battery storage or grid power, treating the water heater as a pre-charged thermal battery.
 4. **Native Logbook Integration:** Automatically logs every setpoint change and trigger event to Home Assistant's native Logbook with zero helpers or setup required.
-5. **(Optional) True State of Charge (SoC):** A 40/60 volumetric weighted thermal storage sensor that tracks real usable energy, shower minutes (at 2.0 GPM), and usable gallons.
+5. **(Optional) True State of Charge (SoC):** Volumetric thermal storage tracking (0–100% nominal SoC + solar boost) and dedicated first-class sensors for usable shower minutes and gallons.
 6. **(Optional) Native Dashboard Card:** A complete, glanceable Lovelace card with SoC gauge, operating status, tank temperatures, and live event log.
 
 ---
@@ -38,7 +35,7 @@ However, occasional heavy evening water usage (e.g. late showers, baths, or dish
 | File | Type | Description |
 | :--- | :--- | :--- |
 | [`blueprint.yaml`](blueprint.yaml) | **Core Automation** | Automation blueprint for the 24-hr manager. Zero helpers or extra sensors required. |
-| [`templates.yaml`](templates.yaml) | *Optional Monitoring* | Template sensor computing State of Charge (0–135%), thermal spread, shower minutes, and gallons. |
+| [`templates.yaml`](templates.yaml) | *Optional Monitoring* | Template sensors for State of Charge (0–100% nominal + solar boost), thermal spread, shower minutes, and gallons. |
 | [`hpwh-card.js`](hpwh-card.js) | *Custom UI Card* | Compact Lovelace card with battery dial, glance metrics, and visual GUI dialog. |
 | [`dashboard.yaml`](dashboard.yaml) | *Native YAML Card* | Standard Lovelace YAML configuration using built-in Home Assistant cards. |
 
