@@ -27,7 +27,7 @@ homeassistant-toolbox/
     ├── README.md           # In-depth problem statement, theory & step-by-step setup
     ├── blueprint.yaml      # Ready-to-import Home Assistant automation blueprint
     ├── templates.yaml      # Jinja template sensors and attributes
-    └── dashboard.yaml      # Native Lovelace UI card configuration
+    └── <solution>-card.js  # Dedicated Lovelace dashboard card
 ```
 
 ---

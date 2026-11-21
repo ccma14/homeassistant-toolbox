@@ -37,7 +37,6 @@ However, occasional heavy evening water usage (e.g. late showers, baths, or dish
 | [`blueprint.yaml`](blueprint.yaml) | **Core Automation** | Automation blueprint for the 24-hr manager. Zero helpers or extra sensors required. |
 | [`templates.yaml`](templates.yaml) | *Optional Monitoring* | Template sensors for State of Charge (0–100% nominal + solar boost), thermal spread, shower minutes, and gallons. |
 | [`hpwh-card.js`](hpwh-card.js) | *Custom UI Card* | Compact Lovelace card with battery dial, glance metrics, and visual GUI dialog. |
-| [`dashboard.yaml`](dashboard.yaml) | *Native YAML Card* | Standard Lovelace YAML configuration using built-in Home Assistant cards. |
 
 ---
 
@@ -100,13 +99,9 @@ Navigate to **Developer Tools > YAML** and click **Template Entities**. The sens
   <img src="images/hpwh.png" width="400" alt="Heat Pump Water Heater Dashboard Card">
 </p>
 
-You can choose between the **Dedicated Custom UI Card** (with a visual graphical configuration dialog) or the **Native YAML Card**.
+The package includes a dedicated, ultra-compact Lovelace card featuring an SVG battery dial, glance metrics (supporting both **Shower Minutes** and **Gallons**), manual boost/reset actions, and a **100% visual GUI configuration dialog**.
 
-#### Option A: Dedicated Custom UI Card (Recommended — Visual Dialog)
-
-This card provides an ultra-compact layout with an SVG battery dial, glance metrics (supporting both **Shower Minutes** and **Gallons**), boost buttons, and a **100% visual configuration dialog** (dropdown entity pickers).
-
-##### 1. Install the Card:
+#### 1. Install the Card:
 1. Download [`hpwh-card.js`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js) into your Home Assistant directory at `/config/www/hpwh-card.js`:
    ```bash
    wget -O /config/www/hpwh-card.js https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js
@@ -121,21 +116,13 @@ This card provides an ultra-compact layout with an SVG battery dial, glance metr
    * **Resource type:** `JavaScript Module`
 4. Refresh your browser window.
 
-##### 2. Add to Dashboard:
+#### 2. Add to Dashboard:
 1. Open your dashboard and click **Edit Dashboard** $\rightarrow$ **+ Add Card**.
 2. Search for **Heat Pump Water Heater Card** (or select it from the card picker).
 3. Select your entities using the visual dropdown pickers (**Water Heater**, **Power Sensor**, **SoC Sensor**, **Tank Temperatures**)—**no YAML editing required!**
 4. All metrics (SoC dial, Status, Target, and Temperatures) are **clickable** to view native Home Assistant history and graphs.
 
----
-
-#### Option B: Native Lovelace Card (No JavaScript / Pure YAML)
-
-If you prefer using only built-in Home Assistant cards:
-1. Open your dashboard $\rightarrow$ **Edit Dashboard** $\rightarrow$ **+ Add Card** $\rightarrow$ **Manual**.
-2. Paste the YAML from [`dashboard.yaml`](dashboard.yaml).  
-   *(If your entity IDs differ from the defaults, use `Ctrl+F` in the editor to replace them).*
-3. Click **Save**.
+*(For users who manage dashboards in YAML mode, you can also add it directly with `type: custom:hpwh-card` and `entity: climate.water_heater`.)*
 
 ---
 
