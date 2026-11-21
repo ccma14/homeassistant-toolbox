@@ -1,24 +1,24 @@
 # ♨️ Heat Pump Water Heater Manager
 
-A complete, 24-hour lifecycle management system for Heat Pump Water Heaters (such as Rheem EcoNet via ESPHome, or custom dual-sensor setups) designed to overcome thermal stratification and maximize solar self-consumption.
+A Home Assistant automation blueprint and dashboard card for Heat Pump Water Heaters (such as Rheem EcoNet via ESPHome) to manage tank stratification and maximize daytime solar self-consumption.
 
 ---
 
 ## The Concept: The Water Heater as a Thermal Battery
 
-A 65-gallon Heat Pump Water Heater is a zero-degradation thermal battery capable of storing **nearly 12 kWh of thermal energy**—rivaling the usable capacity of an entire residential chemical battery.
+A 65-gallon Heat Pump Water Heater is a zero-degradation thermal battery capable of storing **nearly 12 kWh of thermal energy**—rivaling the usable capacity of a residential home chemical battery.
 
-Operating at a Coefficient of Performance (COP) around 3.5, banking that energy requires under 3.5 kWh of solar electricity, while a 140°F midday boost packs in an extra 3.2 kWh of discretionary thermal reserve. By boosting during peak solar hours and dropping the setpoint ahead of the evening solar ramp-down, the household coasts through peak demand hours and overnight entirely on stored heat—sparing stationary home battery storage from high-draw inductive cycling and round-trip conversion losses.
+Operating at an advertised Coefficient of Performance (COP) up to 4.0 (according to Rheem), banking that energy requires under 3.0 kWh of solar electricity, while a 140°F midday boost adds ~3.2 kWh of thermal storage. Boosting during peak solar hours and dropping the setpoint ahead of evening solar ramp-down allows the home to run through peak hours and overnight on stored heat—avoiding draining home battery reserves overnight while bypassing round-trip conversion losses.
 
 ---
 
 ## The Challenge: Stratification & The "False Full" Thermostat
 
-While cycling the tank as a thermal battery is economically ideal, occasional evening water draws (e.g. late showers, baths, or dishwashing) introduce severe **thermal stratification**:
-* Cold municipal water enters the bottom of the tank via the dip tube, displacing hot water in the lower ~60% of the volume.
-* Hot water floats at the top, keeping the upper tank temperature sensor at or near the 120°F reduced setpoint.
-* Because the upper sensor satisfies the thermostat, the heat pump never triggers overnight.
-* Without intervention, only a thin layer of hot water remains at the top. When morning showers are taken, that top layer is quickly exhausted, drawing cold water from below—hours before the 10:00 AM daytime solar boost window could ever engage.
+Using the tank as a thermal battery works well, but evening water draws (such as showers, baths, or dishwashing) cause **thermal stratification**:
+* Cold municipal water enters the bottom of the tank, displacing hot water in the lower ~60% of the volume.
+* Hot water floats at the top, keeping the upper temperature sensor at or near the 120°F reduced setpoint.
+* Because the upper sensor satisfies the thermostat, the heat pump does not turn on overnight.
+* In the morning, only a thin layer of hot water remains. That hot layer is quickly exhausted during early showers, drawing cold water up from the bottom well before the daytime solar window begins.
 
 ![Tank Stratification](images/tank_stratification.png)
 *Widening gap between upper and lower tank temperatures following evening water draws.*
@@ -27,12 +27,12 @@ While cycling the tank as a thermal battery is economically ideal, occasional ev
 
 ## The Solution
 
-1. **Early Morning Assurance (04:30 AM default check):** Evaluates the lower tank temperature well before morning showers. If depleted (< 102°F), it calculates a dynamic overdrive setpoint (`upper + 4°F`, up to 140°F) to force the compressor on, runs until the lower tank reaches a safe reserve (112°F), and resets back to baseline—guaranteeing recovery completes before shower time.
-2. **Daytime Solar Soak (10:00 AM):** Checks today's solar PV forecast. If high (> 25 kWh), boosts setpoint to 140°F to store free solar energy as thermal storage. If low, maintains a reliable 125°F baseline.
-3. **Evening Reset (4:00 PM):** Drops setpoint to 120°F to prevent the compressor from cycling overnight on home battery storage or grid power, treating the water heater as a pre-charged thermal battery.
-4. **Native Logbook Integration:** Automatically logs every setpoint change and trigger event to Home Assistant's native Logbook with zero helpers or setup required.
-5. **(Optional) True State of Charge (SoC):** Volumetric thermal storage tracking (0–100% nominal SoC + solar boost) and dedicated first-class sensors for usable shower minutes and gallons.
-6. **(Optional) Native Dashboard Card:** A complete, glanceable Lovelace card with SoC gauge, operating status, tank temperatures, and live event log.
+1. **Early Morning Check (04:30 AM default):** Checks the lower tank temperature before morning showers. If depleted (< 102°F), it raises the setpoint slightly above the upper sensor (`upper + 4°F`, up to 140°F) to turn on the compressor, runs until the lower tank reaches a safe reserve (112°F), and resets back to baseline.
+2. **Daytime Solar Boost (10:00 AM):** Checks today's solar PV forecast. If sunny (> 25 kWh forecast), boosts the setpoint to 140°F to store solar energy as hot water. If cloudy, maintains a 125°F baseline.
+3. **Evening Reset (4:00 PM):** Drops the setpoint to 120°F ahead of sunset to prevent the compressor from running overnight on battery storage or grid power.
+4. **Logbook Integration:** Automatically logs every setpoint change and trigger event to Home Assistant's native Logbook.
+5. **(Optional) State of Charge (SoC):** Volumetric thermal storage tracking (0–100% nominal SoC + solar boost) and sensors for usable shower minutes and gallons.
+6. **(Optional) Dashboard Card:** A Lovelace card with an SoC gauge, operating status, tank temperatures, and recent events.
 
 ---
 
@@ -40,17 +40,17 @@ While cycling the tank as a thermal battery is economically ideal, occasional ev
 
 | File | Type | Description |
 | :--- | :--- | :--- |
-| [`blueprint.yaml`](blueprint.yaml) | **Core Automation** | Automation blueprint for the 24-hr manager. Zero helpers or extra sensors required. |
-| [`templates.yaml`](templates.yaml) | *Optional Monitoring* | Template sensors for State of Charge (0–100% nominal + solar boost), thermal spread, shower minutes, and gallons. |
-| [`hpwh-card.js`](hpwh-card.js) | *Custom UI Card* | Compact Lovelace card with battery dial, glance metrics, and visual GUI dialog. |
+| [`blueprint.yaml`](blueprint.yaml) | **Automation Blueprint** | Daily schedule and stratification manager. |
+| [`templates.yaml`](templates.yaml) | *Optional Sensors* | Template sensors for State of Charge (0–100% + solar boost), shower minutes, and gallons. |
+| [`hpwh-card.js`](hpwh-card.js) | *Custom UI Card* | Lovelace card with battery gauge, metrics, and card editor. |
 
 ---
 
-## Quick Start (Install in Under 1 Minute)
+## Setup
 
 ### Step 1: Import and Configure the Blueprint
 
-The automation blueprint requires **zero extra helpers and zero YAML configuration**. It uses your existing water heater climate entity and temperature sensors:
+Import the blueprint using either method below:
 
 #### Option A: 1-Click Import via My Home Assistant (Recommended)
 
@@ -79,7 +79,7 @@ Then reload blueprints under **Developer Tools > YAML > Automations**.
    * **Lower Tank Temperature Sensor:** `sensor.water_heater_lower_tank_temperature`
    * **Upper Tank Temperature Sensor:** `sensor.water_heater_upper_tank_temperature`
    * **Solar Forecast Sensor:** `sensor.solar_forecast_today` (e.g. Solcast, Forecast.Solar)
-3. Click **Save**. **You're done!** Your water heater will now automatically manage morning recovery, daytime solar soak, and evening reset. Every action is logged to your water heater's native Logbook.
+3. Click **Save**. The automation will now manage morning recovery, solar boost, and evening reset. Every action is logged to your water heater's native Logbook.
 
 ---
 
@@ -105,7 +105,7 @@ Navigate to **Developer Tools > YAML** and click **Template Entities**. The sens
   <img src="images/hpwh.png" width="400" alt="Heat Pump Water Heater Dashboard Card">
 </p>
 
-The package includes a dedicated, ultra-compact Lovelace card featuring an SVG battery dial, glance metrics (supporting both **Shower Minutes** and **Gallons**), manual boost/reset actions, and a **100% visual GUI configuration dialog**.
+The card displays an SVG battery dial, shower metrics (minutes or gallons), tank temperatures, and manual boost/reset actions.
 
 #### 1. Install the Card:
 1. Download [`hpwh-card.js`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js) into your Home Assistant directory at `/config/www/hpwh-card.js`:
@@ -125,7 +125,7 @@ The package includes a dedicated, ultra-compact Lovelace card featuring an SVG b
 #### 2. Add to Dashboard:
 1. Open your dashboard and click **Edit Dashboard** $\rightarrow$ **+ Add Card**.
 2. Search for **Heat Pump Water Heater Card** (or select it from the card picker).
-3. Select your entities using the visual dropdown pickers (**Water Heater**, **Power Sensor**, **SoC Sensor**, **Tank Temperatures**)—**no YAML editing required!**
+3. Select your entities in the card editor (**Water Heater**, **Power Sensor**, **SoC Sensor**, **Tank Temperatures**).
 4. All metrics (SoC dial, Status, Target, and Temperatures) are **clickable** to view native Home Assistant history and graphs.
 
 *(For users who manage dashboards in YAML mode, you can also add it directly with `type: custom:hpwh-card` and `entity: climate.water_heater`.)*
