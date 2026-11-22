@@ -4,7 +4,7 @@
  * License: Apache 2.0
  */
 
-const CARD_VERSION = "1.1.0";
+const CARD_VERSION = "1.2.0";
 
 console.info(
   `%c HPWH-CARD %c v${CARD_VERSION} `,
@@ -146,22 +146,99 @@ class HpwhCard extends HTMLElement {
           name: "title",
           selector: { text: {} }
         }
-      ]
+      ],
+      computeLabel: (schema) => {
+        const labels = {
+          entity: "Water Heater Climate Entity",
+          power_sensor: "Power Sensor (for operating state)",
+          soc_sensor: "State of Charge Sensor",
+          shower_minutes_sensor: "Shower Minutes Sensor",
+          shower_gallons_sensor: "Shower Gallons Sensor",
+          upper_temp_sensor: "Upper Tank Temperature Sensor",
+          lower_temp_sensor: "Lower Tank Temperature Sensor",
+          automation_entity: "HPWH Automation Entity",
+          shower_display: "Default Shower Buffer Display",
+          boost_temperature: "Manual Boost Target (°F)",
+          reset_temperature: "Manual Reset Target (°F)",
+          title: "Card Title"
+        };
+        return labels[schema.name] || schema.name;
+      },
+      computeHelper: (schema) => {
+        const helpers = {
+          entity: "The climate entity controlling your heat pump water heater",
+          power_sensor: "Monitors compressor / element wattage (optional)",
+          soc_sensor: "Calculated 0–100% tank thermal reserve sensor",
+          shower_display: "Initial display metric on card load (minutes or gallons)",
+          boost_temperature: "Target temperature set when clicking Boost button",
+          reset_temperature: "Target temperature set when clicking Reset button",
+          automation_entity: "The automation blueprint instance for status tracking"
+        };
+        return helpers[schema.name] || "";
+      }
     };
   }
 
-  static getStubConfig() {
+  static getGridOptions() {
+    return {
+      columns: 12,
+      rows: 4,
+      min_columns: 6,
+      min_rows: 3
+    };
+  }
+
+  static getStubConfig(hass) {
+    let climateEntity = "climate.water_heater";
+    let powerSensor = "sensor.water_heater_power";
+    let socSensor = "sensor.water_heater_state_of_charge";
+    let minSensor = "sensor.water_heater_shower_minutes";
+    let galSensor = "sensor.water_heater_shower_gallons";
+    let upperSensor = "sensor.water_heater_upper_tank_temperature";
+    let lowerSensor = "sensor.water_heater_lower_tank_temperature";
+    let autoEntity = "automation.solar_stratification_heat_pump_water_heater_manager";
+
+    if (hass && hass.states) {
+      const entities = Object.keys(hass.states);
+      const climateMatch = entities.find(e => e.startsWith("climate.") && (e.includes("water_heater") || e.includes("hpwh") || e.includes("econet"))) ||
+        entities.find(e => e.startsWith("climate."));
+      if (climateMatch) climateEntity = climateMatch;
+
+      const socMatch = entities.find(e => e.startsWith("sensor.") && (e.includes("state_of_charge") || e.includes("soc")));
+      if (socMatch) socSensor = socMatch;
+
+      const powerMatch = entities.find(e => e.startsWith("sensor.") && (e.includes("power") || e.includes("watts")) && (e.includes("water_heater") || e.includes("hpwh")));
+      if (powerMatch) powerSensor = powerMatch;
+
+      const upperMatch = entities.find(e => e.startsWith("sensor.") && e.includes("upper") && (e.includes("temp") || e.includes("tank")));
+      if (upperMatch) upperSensor = upperMatch;
+
+      const lowerMatch = entities.find(e => e.startsWith("sensor.") && e.includes("lower") && (e.includes("temp") || e.includes("tank")));
+      if (lowerMatch) lowerSensor = lowerMatch;
+
+      const minMatch = entities.find(e => e.startsWith("sensor.") && e.includes("shower") && e.includes("minutes"));
+      if (minMatch) minSensor = minMatch;
+
+      const galMatch = entities.find(e => e.startsWith("sensor.") && e.includes("shower") && e.includes("gallons"));
+      if (galMatch) galSensor = galMatch;
+
+      const autoMatch = entities.find(e => e.startsWith("automation.") && (e.includes("hpwh") || e.includes("water_heater") || e.includes("solar")));
+      if (autoMatch) autoEntity = autoMatch;
+    }
+
     return {
       title: "♨️ Heat Pump Water Heater",
       shower_display: "minutes",
-      entity: "climate.water_heater",
-      power_sensor: "sensor.water_heater_power",
-      soc_sensor: "sensor.water_heater_state_of_charge",
-      shower_minutes_sensor: "sensor.water_heater_shower_minutes",
-      shower_gallons_sensor: "sensor.water_heater_shower_gallons",
-      upper_temp_sensor: "sensor.water_heater_upper_tank_temperature",
-      lower_temp_sensor: "sensor.water_heater_lower_tank_temperature",
-      automation_entity: "automation.solar_stratification_heat_pump_water_heater_manager"
+      entity: climateEntity,
+      power_sensor: powerSensor,
+      soc_sensor: socSensor,
+      shower_minutes_sensor: minSensor,
+      shower_gallons_sensor: galSensor,
+      upper_temp_sensor: upperSensor,
+      lower_temp_sensor: lowerSensor,
+      automation_entity: autoEntity,
+      boost_temperature: 140,
+      reset_temperature: 120
     };
   }
 
@@ -205,11 +282,14 @@ class HpwhCard extends HTMLElement {
       <style>
         ha-card {
           padding: 16px;
-          background: var(--ha-card-background, var(--card-background-color, #1c1c1e));
+          background: var(--ha-card-background, var(--card-background-color, white));
           border-radius: var(--ha-card-border-radius, 12px);
+          border-width: var(--ha-card-border-width, 1px);
+          border-style: var(--ha-card-border-style, solid);
+          border-color: var(--ha-card-border-color, var(--divider-color, rgba(127, 127, 127, 0.15)));
           box-shadow: var(--ha-card-box-shadow, none);
-          font-family: var(--paper-font-body1_-_font-family, system-ui, -apple-system, sans-serif);
-          color: var(--primary-text-color, #ffffff);
+          font-family: var(--ha-card-font-family, inherit);
+          color: var(--primary-text-color);
           box-sizing: border-box;
           user-select: none;
           min-height: 290px;
@@ -218,7 +298,7 @@ class HpwhCard extends HTMLElement {
           font-size: 1.15rem;
           font-weight: 600;
           margin-bottom: 14px;
-          color: var(--primary-text-color, #ffffff);
+          color: var(--primary-text-color);
           display: flex;
           align-items: center;
           gap: 8px;
@@ -235,14 +315,15 @@ class HpwhCard extends HTMLElement {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+          border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.12));
           border-radius: 10px;
           padding: 8px;
           cursor: pointer;
-          transition: background 0.2s, transform 0.1s;
+          transition: background 0.2s, transform 0.1s, border-color 0.2s;
         }
         .soc-container:hover {
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--ha-card-background-hover, var(--divider-color, rgba(127, 127, 127, 0.16)));
         }
         .soc-container:active {
           transform: scale(0.98);
@@ -254,12 +335,12 @@ class HpwhCard extends HTMLElement {
         }
         .soc-bg {
           fill: none;
-          stroke: rgba(255, 255, 255, 0.1);
+          stroke: var(--divider-color, rgba(127, 127, 127, 0.25));
           stroke-width: 6;
         }
         .soc-meter {
           fill: none;
-          stroke: #4caf50;
+          stroke: var(--success-color, #4caf50);
           stroke-width: 6;
           stroke-linecap: round;
           transition: stroke-dasharray 0.5s ease, stroke 0.3s;
@@ -269,10 +350,11 @@ class HpwhCard extends HTMLElement {
           font-size: 1.25rem;
           font-weight: 700;
           text-align: center;
+          color: var(--primary-text-color);
         }
         .soc-sub {
           font-size: 0.72rem;
-          opacity: 0.7;
+          color: var(--secondary-text-color);
           margin-top: 4px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -283,28 +365,30 @@ class HpwhCard extends HTMLElement {
           gap: 8px;
         }
         .pill {
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+          border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.12));
           border-radius: 10px;
           padding: 8px 12px;
           display: flex;
           justify-content: space-between;
           align-items: center;
           cursor: pointer;
-          transition: background 0.2s, transform 0.1s;
+          transition: background 0.2s, transform 0.1s, border-color 0.2s;
         }
         .pill:hover {
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--ha-card-background-hover, var(--divider-color, rgba(127, 127, 127, 0.16)));
         }
         .pill:active {
           transform: scale(0.98);
         }
         .pill-label {
           font-size: 0.8rem;
-          opacity: 0.7;
+          color: var(--secondary-text-color);
         }
         .pill-value {
           font-size: 0.95rem;
           font-weight: 600;
+          color: var(--primary-text-color);
           text-transform: capitalize;
           display: flex;
           align-items: center;
@@ -313,7 +397,8 @@ class HpwhCard extends HTMLElement {
         .glance-row {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+          border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.12));
           border-radius: 10px;
           padding: 8px 4px;
           text-align: center;
@@ -330,34 +415,36 @@ class HpwhCard extends HTMLElement {
           transition: background 0.2s, transform 0.1s;
         }
         .glance-item:hover {
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--ha-card-background-hover, var(--divider-color, rgba(127, 127, 127, 0.16)));
         }
         .glance-item:active {
           transform: scale(0.96);
         }
         .glance-item:not(:last-child) {
-          border-right: 1px solid rgba(255, 255, 255, 0.08);
+          border-right: 1px solid var(--divider-color, rgba(127, 127, 127, 0.15));
         }
         .glance-sub {
           font-size: 0.72rem;
-          opacity: 0.7;
+          color: var(--secondary-text-color);
         }
         .glance-val {
           font-size: 1rem;
           font-weight: 600;
+          color: var(--primary-text-color);
         }
         .auto-row {
-          background: rgba(255, 255, 255, 0.03);
+          background: var(--secondary-background-color, rgba(127, 127, 127, 0.05));
+          border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.1));
           border-radius: 8px;
           padding: 6px 10px;
           font-size: 0.78rem;
-          color: var(--secondary-text-color, rgba(255, 255, 255, 0.65));
+          color: var(--secondary-text-color);
           display: flex;
           align-items: center;
           justify-content: center;
           margin-bottom: 12px;
           cursor: pointer;
-          transition: background 0.2s, color 0.2s;
+          transition: background 0.2s, color 0.2s, border-color 0.2s;
           overflow: hidden;
         }
         .auto-row span {
@@ -366,8 +453,8 @@ class HpwhCard extends HTMLElement {
           text-overflow: ellipsis;
         }
         .auto-row:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: var(--primary-text-color, #ffffff);
+          background: var(--ha-card-background-hover, var(--divider-color, rgba(127, 127, 127, 0.16)));
+          color: var(--primary-text-color);
         }
         .actions-row {
           display: grid;
@@ -375,28 +462,39 @@ class HpwhCard extends HTMLElement {
           gap: 10px;
         }
         .btn {
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+          border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.2));
           border-radius: 8px;
           padding: 10px;
           font-size: 0.88rem;
           font-weight: 600;
-          color: var(--primary-text-color, #ffffff);
+          color: var(--primary-text-color);
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
-          transition: background 0.2s, transform 0.1s;
+          transition: background 0.2s, transform 0.1s, border-color 0.2s;
         }
         .btn:hover {
-          background: rgba(255, 255, 255, 0.12);
+          background: var(--ha-card-background-hover, var(--divider-color, rgba(127, 127, 127, 0.22)));
         }
         .btn:active {
           transform: scale(0.98);
         }
         .btn-boost {
-          border-color: rgba(255, 152, 0, 0.3);
+          border-color: var(--warning-color, rgba(255, 152, 0, 0.5));
+        }
+        .btn-boost:hover {
+          background: rgba(255, 152, 0, 0.12);
+        }
+        .soc-container:focus-visible,
+        .pill:focus-visible,
+        .glance-item:focus-visible,
+        .auto-row:focus-visible,
+        .btn:focus-visible {
+          outline: 2px solid var(--primary-color, #03a9f4);
+          outline-offset: 2px;
         }
       </style>
 
@@ -406,7 +504,7 @@ class HpwhCard extends HTMLElement {
         </div>
 
         <div class="top-row">
-          <div class="soc-container" id="click-soc" title="Click to view State of Charge history">
+          <div class="soc-container" id="click-soc" role="button" tabindex="0" aria-label="Water heater state of charge. Click to view history." title="Click to view State of Charge history">
             <div style="position: relative; display: flex; align-items: center; justify-content: center;">
               <svg class="soc-svg" viewBox="0 0 70 70">
                 <circle class="soc-bg" cx="35" cy="35" r="30"></circle>
@@ -418,11 +516,11 @@ class HpwhCard extends HTMLElement {
           </div>
 
           <div class="status-stack">
-            <div class="pill" id="click-status" title="Click to view power / status history">
+            <div class="pill" id="click-status" role="button" tabindex="0" aria-label="Operating status. Click to view power history." title="Click to view power / status history">
               <span class="pill-label">HPWH Status</span>
               <span class="pill-value" id="status-val">Idle</span>
             </div>
-            <div class="pill" id="click-target" title="Click to adjust water heater temperature">
+            <div class="pill" id="click-target" role="button" tabindex="0" aria-label="Target setpoint. Click to adjust temperature." title="Click to adjust water heater temperature">
               <span class="pill-label">Target Setpoint</span>
               <span class="pill-value" id="target-val">--</span>
             </div>
@@ -430,21 +528,21 @@ class HpwhCard extends HTMLElement {
         </div>
 
         <div class="glance-row">
-          <div class="glance-item" id="click-upper" title="Click to view Upper Tank history">
+          <div class="glance-item" id="click-upper" role="button" tabindex="0" aria-label="Upper tank temperature. Click to view history." title="Click to view Upper Tank history">
             <span class="glance-sub">Upper Tank</span>
             <span class="glance-val" id="upper-val">--</span>
           </div>
-          <div class="glance-item" id="click-lower" title="Click to view Lower Tank history">
+          <div class="glance-item" id="click-lower" role="button" tabindex="0" aria-label="Lower tank temperature. Click to view history." title="Click to view Lower Tank history">
             <span class="glance-sub">Lower Tank</span>
             <span class="glance-val" id="lower-val">--</span>
           </div>
-          <div class="glance-item" id="click-shower" title="Click to view Shower Buffer history">
+          <div class="glance-item" id="click-shower" role="button" tabindex="0" aria-label="Shower buffer. Click to view history, double-click to toggle units." title="Click to view Shower Buffer history">
             <span class="glance-sub">Shower Buffer</span>
             <span class="glance-val" id="shower-val">--</span>
           </div>
         </div>
 
-        <div class="auto-row" id="click-auto" title="Click to view automation history">
+        <div class="auto-row" id="click-auto" role="button" tabindex="0" aria-label="Automation status. Click to view automation history." title="Click to view automation history">
           <span id="auto-text">⚡ Automation: Active & monitoring</span>
         </div>
 
@@ -477,26 +575,46 @@ class HpwhCard extends HTMLElement {
       btnReset: this.shadowRoot.getElementById("btn-reset")
     };
 
-    // Attach click events once
-    this.shadowRoot.getElementById("click-soc")?.addEventListener("click", () => {
+    // Keyboard accessibility helper for interactive div elements
+    const addKeyHandler = (el) => {
+      el?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          el.click();
+        }
+      });
+    };
+
+    // Attach click and keyboard events once
+    const socEl = this.shadowRoot.getElementById("click-soc");
+    socEl?.addEventListener("click", () => {
       this._fireMoreInfo(this._config.soc_sensor || this._config.entity);
     });
+    addKeyHandler(socEl);
 
-    this.shadowRoot.getElementById("click-status")?.addEventListener("click", () => {
+    const statusEl = this.shadowRoot.getElementById("click-status");
+    statusEl?.addEventListener("click", () => {
       this._fireMoreInfo(this._config.power_sensor || this._config.entity);
     });
+    addKeyHandler(statusEl);
 
-    this.shadowRoot.getElementById("click-target")?.addEventListener("click", () => {
+    const targetEl = this.shadowRoot.getElementById("click-target");
+    targetEl?.addEventListener("click", () => {
       this._fireMoreInfo(this._config.entity);
     });
+    addKeyHandler(targetEl);
 
-    this.shadowRoot.getElementById("click-upper")?.addEventListener("click", () => {
+    const upperEl = this.shadowRoot.getElementById("click-upper");
+    upperEl?.addEventListener("click", () => {
       this._fireMoreInfo(this._config.upper_temp_sensor);
     });
+    addKeyHandler(upperEl);
 
-    this.shadowRoot.getElementById("click-lower")?.addEventListener("click", () => {
+    const lowerEl = this.shadowRoot.getElementById("click-lower");
+    lowerEl?.addEventListener("click", () => {
       this._fireMoreInfo(this._config.lower_temp_sensor);
     });
+    addKeyHandler(lowerEl);
 
     let showerClickTimeout = null;
     const showerItem = this.shadowRoot.getElementById("click-shower");
@@ -518,10 +636,13 @@ class HpwhCard extends HTMLElement {
         }, 250);
       }
     });
+    addKeyHandler(showerItem);
 
-    this.shadowRoot.getElementById("click-auto")?.addEventListener("click", () => {
+    const autoEl = this.shadowRoot.getElementById("click-auto");
+    autoEl?.addEventListener("click", () => {
       this._fireMoreInfo(this._config.automation_entity);
     });
+    addKeyHandler(autoEl);
 
     this.shadowRoot.getElementById("btn-boost")?.addEventListener("click", () => {
       const target = this._config.boost_temperature ?? 140;
@@ -652,16 +773,16 @@ class HpwhCard extends HTMLElement {
         statusColor = "inherit";
       } else if (pwr < 1000) {
         statusText = "Heat Pump";
-        statusColor = "#4caf50";
+        statusColor = "var(--success-color, #4caf50)";
       } else {
         statusText = "⚡ Element";
-        statusColor = "#f44336";
+        statusColor = "var(--error-color, #f44336)";
       }
     } else if (climateEntity) {
       const hvacAction = climateEntity.attributes?.hvac_action;
       if (hvacAction === "heating") {
         statusText = "Heating";
-        statusColor = "#4caf50";
+        statusColor = "var(--success-color, #4caf50)";
       } else if (hvacAction === "idle") {
         statusText = "Idle";
       } else if (climateEntity.attributes?.preset_mode) {
@@ -731,16 +852,16 @@ class HpwhCard extends HTMLElement {
       }
     }
 
-    let gaugeColor = "#757575"; // Default neutral gray if unavailable
+    let gaugeColor = "var(--state-icon-color, #757575)"; // Default neutral gray if unavailable
     if (hasSoc) {
       if (socVal < 60) {
-        gaugeColor = "#f44336";
+        gaugeColor = "var(--error-color, #f44336)";
       } else if (socVal < 90) {
-        gaugeColor = "#ff9800";
+        gaugeColor = "var(--warning-color, #ff9800)";
       } else if (boostVal > 0) {
-        gaugeColor = "#ffb300"; // Solar Gold
+        gaugeColor = "var(--state-solar-color, #ffb300)"; // Solar Gold
       } else {
-        gaugeColor = "#4caf50";
+        gaugeColor = "var(--success-color, #4caf50)";
       }
     }
 
@@ -754,7 +875,7 @@ class HpwhCard extends HTMLElement {
     if (this._elements.socSub) {
       if (boostVal > 0) {
         this._elements.socSub.textContent = `+${boostVal}% Solar Boost`;
-        this._elements.socSub.style.color = "#ffb300";
+        this._elements.socSub.style.color = "var(--state-solar-color, #ffb300)";
         this._elements.socSub.style.fontWeight = "600";
       } else {
         this._elements.socSub.textContent = "Thermal Storage";

@@ -142,9 +142,9 @@ The card displays an SVG battery dial, shower metrics (minutes or gallons), tank
 
    *(Or navigate to **Settings > Dashboards > 3 dots (top right) > Resources**, or open `/config/lovelace/resources` directly on your server. Note: Ensure **Advanced Mode** is toggled ON under your user profile for this menu to be visible).*
 3. Click **+ Add Resource** (bottom right):
-   * **URL:** `/local/hpwh-card.js?v=1.1.0`
+   * **URL:** `/local/hpwh-card.js?v=1.2.0`
    * **Resource type:** `JavaScript Module`
-   *(Tip: When updating the card, increment the version query parameter, e.g. `?v=1.1.1`, to ensure browsers load the new file instead of using a cached copy).*
+   *(Tip: When updating the card, increment the version query parameter, e.g. `?v=1.2.1`, to ensure browsers load the new file instead of using a cached copy).*
 4. Refresh your browser window.
 
 #### 2. Add to Dashboard:
