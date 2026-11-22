@@ -70,7 +70,7 @@ Copy [`blueprint.yaml`](blueprint.yaml) directly into your Home Assistant config
 ```text
 /config/blueprints/automation/hpwh_daily_manager.yaml
 ```
-Then reload blueprints under **Developer Tools > YAML > Automations**.
+Then reload blueprints under **Developer Tools > YAML > Automations** (or **Settings > Developer Tools / Tools > YAML > Automations**).
 
 #### Creating the Automation:
 1. In **Settings > Automations & Scenes > Blueprints**, find **Solar & Stratification Heat Pump Water Heater Manager** and click **Create Automation**.
@@ -108,13 +108,13 @@ Packages provide self-contained, drop-in YAML with zero indentation errors or ma
    ```
    *(If using the File Editor UI: create a `packages` folder next to `configuration.yaml`, create `hpwh.yaml` inside it, and paste the file contents).*
    *(When updating in the future, re-running this command replaces the package cleanly with no manual editing).*
-3. Reload template entities under **Developer Tools > YAML > Template Entities**.
+3. Reload template entities under **Developer Tools > YAML > Template Entities** (or **Settings > Developer Tools / Tools > YAML > Template Entities**).
 
 #### Option B: Manual Include via `templates.yaml` / `configuration.yaml`
 If your `configuration.yaml` uses `template: !include templates.yaml`, paste the contents of [`templates.yaml`](templates.yaml) starting from the `- sensor:` line.
 
 #### Reloading:
-Navigate to **Developer Tools > YAML** and click **Template Entities**. The sensors (`sensor.water_heater_state_of_charge`, `sensor.water_heater_shower_gallons`, `sensor.water_heater_shower_minutes`) will activate immediately without restarting Home Assistant.
+Navigate to **Developer Tools > YAML** (or **Settings > Developer Tools / Tools > YAML**) and click **Template Entities**. The sensors (`sensor.water_heater_state_of_charge`, `sensor.water_heater_shower_gallons`, `sensor.water_heater_shower_minutes`) will activate immediately without restarting Home Assistant.
 
 ---
 
