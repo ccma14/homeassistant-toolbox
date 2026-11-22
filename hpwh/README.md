@@ -83,11 +83,17 @@ Then reload blueprints under **Developer Tools > YAML > Automations** (or **Sett
 
 ---
 
-## Optional: Visual Monitoring & Dashboard
+## Optional: Visual Monitoring & Dashboard Card
 
-If you'd like a visual dashboard with a thermal battery gauge, stratification spread, shower minutes, and gallon estimates:
+<p align="center">
+  <img src="images/hpwh.png" width="400" alt="Heat Pump Water Heater Dashboard Card">
+</p>
 
-### ⚡ Quick Setup: 1-Line Installer (Recommended)
+To install the dashboard card, State of Charge (SoC) gauge, and usable shower metrics (minutes/gallons), choose either the **1-Line Installer** (recommended) or **Manual File Placement**.
+
+---
+
+### Option A: 1-Line Installer (Recommended)
 If you have the **Advanced SSH & Web Terminal** add-on or terminal access, run this single command inside Home Assistant. It automatically installs the sensor package, downloads the dashboard card, enables `packages:` in `configuration.yaml`, and registers the Lovelace dashboard resource:
 
 ```bash
@@ -95,20 +101,17 @@ curl -sSL https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hp
 ```
 *(Re-running this command in the future cleanly updates both the card and package to the latest version with zero manual editing).*
 
+After running the installer, reload template entities under **Developer Tools / Tools > YAML > Template Entities**.
+
 ---
 
-### Manual Setup
-
-If you prefer to install files manually or do not have terminal access:
-
-### Step 2: Install the State of Charge (SoC) & Utility Sensors
-
-The sensors compute true tank thermal reserves (0–100% nominal SoC + solar boost) and human-friendly shower minutes and gallons buffers using volumetric weighting.
+### Option B: Manual File Placement (File Editor / No Terminal)
+If you do not have terminal access or prefer placing files manually:
 
 > [!TIP]
 > **Configuration Directory Paths:** In Home Assistant OS (e.g. inside the **File Editor** or **Studio Code Server** add-ons), the configuration root directory is displayed as `/homeassistant/`. In container/core installations or SSH terminals, it is traditionally `/config/`. Both refer to the same folder where `configuration.yaml` resides.
 
-#### Option A: Drop-in Home Assistant Package (Recommended)
+#### 1. Install the Sensor Package
 Packages provide self-contained, drop-in YAML with zero indentation errors or manual editing of `configuration.yaml`.
 
 1. Ensure packages are enabled in your `configuration.yaml` (add under `homeassistant:` if not already present):
@@ -121,30 +124,15 @@ Packages provide self-contained, drop-in YAML with zero indentation errors or ma
    wget -O /config/packages/hpwh.yaml https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh.yaml
    ```
    *(If using the File Editor UI: create a `packages` folder next to `configuration.yaml`, create `hpwh.yaml` inside it, and paste the file contents).*
-   *(When updating in the future, re-running this command replaces the package cleanly with no manual editing).*
 3. **Customize Entity IDs & Tank Size (if needed):**
    Open `packages/hpwh.yaml` in your File Editor or Code Server:
    * **Sensor Entity IDs:** If your water heater sensors differ from `sensor.water_heater_upper_tank_temperature` and `sensor.water_heater_lower_tank_temperature`, use Find & Replace to swap them with your actual entity IDs.
    * **Tank Capacity & Inlet Temperature:** Under `sensor.water_heater_state_of_charge`, calibrate `tank_cfg` (default `65.0` gal) and `inlet_cfg` (default `65.0`°F, or an entity ID like `'sensor.water_inlet_temperature'`). Downstream shower metrics inherit these automatically.
-4. Reload template entities under **Developer Tools > YAML > Template Entities** (or **Settings > Tools > YAML > Template Entities**).
+4. Reload template entities under **Developer Tools / Tools > YAML > Template Entities**.
 
-#### Option B: Manual Include via `templates.yaml` / `configuration.yaml`
-If your `configuration.yaml` uses `template: !include templates.yaml`, paste the contents of [`templates.yaml`](templates.yaml) starting from the `- sensor:` line.
+*(Alternative for `templates.yaml`: If your `configuration.yaml` uses `template: !include templates.yaml`, paste the contents of [`templates.yaml`](templates.yaml) starting from the `- sensor:` line).*
 
-#### Reloading:
-Navigate to **Developer Tools > YAML** (or **Settings > Tools > YAML**) and click **Template Entities**. The sensors (`sensor.water_heater_state_of_charge`, `sensor.water_heater_shower_gallons`, `sensor.water_heater_shower_minutes`) will activate immediately without restarting Home Assistant.
-
----
-
-### Step 3: Add the Dashboard Card
-
-<p align="center">
-  <img src="images/hpwh.png" width="400" alt="Heat Pump Water Heater Dashboard Card">
-</p>
-
-The card displays an SVG battery dial, shower metrics (minutes or gallons), tank temperatures, and manual boost/reset actions.
-
-#### 1. Install the Card:
+#### 2. Install the Dashboard Card
 1. Download [`hpwh-card.js`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js) into your `www/` directory (e.g. `/config/www/hpwh-card.js` or `/homeassistant/www/hpwh-card.js`):
    ```bash
    wget -O /config/www/hpwh-card.js https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js
@@ -158,10 +146,13 @@ The card displays an SVG battery dial, shower metrics (minutes or gallons), tank
 3. Click **+ Add Resource** (bottom right):
    * **URL:** `/local/hpwh-card.js?v=1.2.0`
    * **Resource type:** `JavaScript Module`
-   *(Tip: When updating the card, increment the version query parameter, e.g. `?v=1.2.1`, to ensure browsers load the new file instead of using a cached copy).*
 4. Refresh your browser window.
 
-#### 2. Add to Dashboard:
+---
+
+### Step 3: Add the Card to Your Dashboard
+
+Once installed (via either Option A or Option B):
 1. Open your dashboard and click **Edit Dashboard** $\rightarrow$ **+ Add Card**.
 2. Search for **Heat Pump Water Heater Card** (or select it from the card picker).
 3. Select your entities in the card editor (**Water Heater**, **Power Sensor**, **SoC Sensor**, **Tank Temperatures**).
