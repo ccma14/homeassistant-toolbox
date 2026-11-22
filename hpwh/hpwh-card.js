@@ -16,6 +16,7 @@ class HpwhCard extends HTMLElement {
     this._prevLastTriggered = null;
     this._prevTargetTemp = null;
     this._hasFetchedLogbook = false;
+    this._fetchRequestId = 0;
     this._ticker = null;
     this._retryTimeout = null;
   }
@@ -418,10 +419,10 @@ class HpwhCard extends HTMLElement {
 
         <div class="actions-row">
           <button class="btn btn-boost" id="btn-boost">
-            ☀️ Boost 140°F
+            ☀️ Boost
           </button>
           <button class="btn" id="btn-reset">
-            🔄 Reset 120°F
+            🔄 Reset
           </button>
         </div>
       </ha-card>
@@ -526,6 +527,7 @@ class HpwhCard extends HTMLElement {
     if (!force && now - this._lastLogFetch < 10000) return;
     this._lastLogFetch = now;
     this._hasFetchedLogbook = true;
+    const reqId = ++this._fetchRequestId;
 
     const entities = [];
     if (this._config.entity) entities.push(this._config.entity);
@@ -541,6 +543,9 @@ class HpwhCard extends HTMLElement {
         start_time: startTime,
         entity_ids: entities
       });
+
+      // Ignore response if a newer fetch request has already been issued
+      if (reqId !== this._fetchRequestId) return;
 
       if (Array.isArray(events) && events.length > 0) {
         // Filter strictly for HPWH Manager events with a message
@@ -666,7 +671,8 @@ class HpwhCard extends HTMLElement {
     // Automation activity text & live logbook fetch
     const lastTriggered = autoEntity?.attributes?.last_triggered;
     const curTargetTemp = climateEntity?.attributes?.temperature;
-    const shouldFetch = !this._hasFetchedLogbook ||
+    const isInitial = !this._hasFetchedLogbook;
+    const shouldFetch = isInitial ||
       (lastTriggered && lastTriggered !== this._prevLastTriggered) ||
       (curTargetTemp !== undefined && curTargetTemp !== this._prevTargetTemp);
 
@@ -674,8 +680,8 @@ class HpwhCard extends HTMLElement {
       this._prevLastTriggered = lastTriggered;
       this._prevTargetTemp = curTargetTemp;
       this._fetchLogbook();
-      // Retry in 2s to handle database write latency
-      if (this._hasFetchedLogbook) {
+      // Retry in 2s to handle database write latency (live state/trigger updates only, not initial load)
+      if (!isInitial) {
         clearTimeout(this._retryTimeout);
         this._retryTimeout = setTimeout(() => this._fetchLogbook(true), 2000);
       }

@@ -4,8 +4,8 @@ blueprint:
     Daily schedule and stratification manager for Heat Pump Water Heaters to handle tank stratification and maximize daytime solar self-consumption:
 
     * **Early Morning Assurance:** Checks the lower tank before morning showers. If depleted by evening usage, temporarily boosts the setpoint to reheat the lower tank buffer before shower time.
-    * **Daytime Solar Boost:** Pre-heats the tank to 140°F on high solar forecast days to bank thermal energy, or maintains baseline (125°F) on cloudy days.
-    * **Evening Reset:** Drops setpoint to 120°F to prevent the compressor from cycling overnight on home battery storage or grid power.
+    * **Daytime Solar Boost:** Pre-heats the tank to the configured solar target (e.g. 140°F) on high solar forecast days to bank thermal energy, or maintains baseline (e.g. 125°F) on cloudy days.
+    * **Evening Reset:** Drops setpoint to baseline (e.g. 120°F) to prevent the compressor from cycling overnight on home battery storage or grid power.
     * **Native Logging:** Automatically logs all setpoint changes and temperature triggers directly to Home Assistant's Logbook.
   domain: automation
   input:
@@ -146,6 +146,9 @@ variables:
   v_solar_temp: !input solar_target_temperature
   v_cloudy_temp: !input cloudy_target_temperature
   v_evening_temp: !input evening_target_temperature
+  v_morning_time: !input morning_boost_time
+  v_solar_time: !input solar_soak_time
+  v_evening_time: !input evening_reset_time
 
 trigger:
   - trigger: time
@@ -162,7 +165,11 @@ trigger:
 
   - trigger: homeassistant
     event: start
-    id: ha_start
+    id: ha_restart
+
+  - trigger: event
+    event_type: automation_reloaded
+    id: ha_restart
 
 action:
   - choose:
@@ -170,31 +177,51 @@ action:
       # Stage 1: Morning Assurance
       # =========================================================================
       - conditions:
-          - condition: trigger
-            id: morning_boost
-          - condition: template
-            value_template: >-
-              {{ states(v_lower_sensor) | float(999) < (v_morning_thresh | float) }}
+          - condition: or
+            conditions:
+              # Scheduled morning check: trigger if lower tank is below threshold
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: morning_boost
+                  - condition: template
+                    value_template: >-
+                      {{ states(v_lower_sensor) | float(999) < (v_morning_thresh | float) }}
+              # Startup/reload during morning window: resume recovery if overdrive is active
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: ha_restart
+                  - condition: template
+                    value_template: >-
+                      {% set is_morning_window = today_at(v_morning_time) <= now() < today_at(v_solar_time) %}
+                      {% set cur_target = state_attr(v_heater, 'temperature') | float(0) %}
+                      {{ is_morning_window and cur_target > (v_evening_temp | float) }}
         sequence:
-          # Compute overdrive target (upper + 4°F bounded by cloudy and solar targets)
-          - variables:
-              target_temp: >-
-                {% set upper = states(v_upper_sensor) | float(v_evening_temp) %}
-                {% set max_temp = v_solar_temp | float(140) %}
-                {% set min_temp = v_cloudy_temp | float(125) %}
-                {{ [ [ (upper + 4) | round(0), min_temp ] | max, max_temp ] | min }}
+          # If scheduled morning boost, compute and apply overdrive target
+          - if:
+              - condition: trigger
+                id: morning_boost
+            then:
+              # Compute overdrive target (upper + 4°F bounded by cloudy and solar targets)
+              - variables:
+                  target_temp: >-
+                    {% set upper = states(v_upper_sensor) | float(v_evening_temp) %}
+                    {% set max_temp = v_solar_temp | float(140) %}
+                    {% set min_temp = v_cloudy_temp | float(125) %}
+                    {{ [ [ (upper + 4) | round(0), min_temp ] | max, max_temp ] | min }}
 
-          - action: climate.set_temperature
-            target:
-              entity_id: !input water_heater
-            data:
-              temperature: "{{ target_temp }}"
+              - action: climate.set_temperature
+                target:
+                  entity_id: !input water_heater
+                data:
+                  temperature: "{{ target_temp }}"
 
-          - action: logbook.log
-            data:
-              name: "HPWH Manager"
-              message: "Morning Boost: Set to {{ target_temp | int }}°F (Lower: {{ states(v_lower_sensor) | int ~ '°F' if is_number(states(v_lower_sensor)) else 'N/A' }})"
-              entity_id: !input water_heater
+              - action: logbook.log
+                data:
+                  name: "HPWH Manager"
+                  message: "Morning Boost: Set to {{ target_temp | int }}°F (Lower: {{ states(v_lower_sensor) | int ~ '°F' if is_number(states(v_lower_sensor)) else 'N/A' }})"
+                  entity_id: !input water_heater
 
           # Wait until lower tank recovers (evaluates immediately if already recovered)
           - wait_template: >-
@@ -229,8 +256,20 @@ action:
       # Stage 2: Daytime Solar Boost / Baseline
       # =========================================================================
       - conditions:
-          - condition: trigger
-            id: solar_soak
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: solar_soak
+              # Startup/reload during daytime window: apply daytime target if currently below baseline
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: ha_restart
+                  - condition: template
+                    value_template: >-
+                      {% set is_daytime_window = today_at(v_solar_time) <= now() < today_at(v_evening_time) %}
+                      {% set cur_target = state_attr(v_heater, 'temperature') | float(0) %}
+                      {{ is_daytime_window and cur_target < (v_cloudy_temp | float) }}
         sequence:
           - choose:
               # High solar forecast
@@ -267,8 +306,20 @@ action:
       # Stage 3: Evening Reset
       # =========================================================================
       - conditions:
-          - condition: trigger
-            id: evening_reset
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: evening_reset
+              # Startup/reload during overnight window: ensure reset to baseline if target is high
+              - condition: and
+                conditions:
+                  - condition: trigger
+                    id: ha_restart
+                  - condition: template
+                    value_template: >-
+                      {% set is_overnight = now() < today_at(v_morning_time) or now() >= today_at(v_evening_time) %}
+                      {% set cur_target = state_attr(v_heater, 'temperature') | float(0) %}
+                      {{ is_overnight and cur_target > (v_evening_temp | float) }}
         sequence:
           - action: climate.set_temperature
             target:
@@ -279,29 +330,6 @@ action:
             data:
               name: "HPWH Manager"
               message: "Evening Reset: Set to {{ v_evening_temp | int }}°F"
-              entity_id: !input water_heater
-
-      # =========================================================================
-      # Safety Check: Startup recovery if HA restarted during morning overdrive
-      # =========================================================================
-      - conditions:
-          - condition: trigger
-            id: ha_start
-          - condition: template
-            value_template: >-
-              {% set cur_target = state_attr(v_heater, 'temperature') | float(0) %}
-              {% set lower = states(v_lower_sensor) | float(0) %}
-              {{ cur_target > (v_evening_temp | float) and (lower >= (v_recovery_thresh | float) or now().hour >= 7) }}
-        sequence:
-          - action: climate.set_temperature
-            target:
-              entity_id: !input water_heater
-            data:
-              temperature: !input evening_target_temperature
-          - action: logbook.log
-            data:
-              name: "HPWH Manager"
-              message: "Safety Reset on Startup: {{ v_evening_temp | int }}°F (Lower: {{ states(v_lower_sensor) | int ~ '°F' if is_number(states(v_lower_sensor)) else 'N/A' }})"
               entity_id: !input water_heater
 
 mode: restart
