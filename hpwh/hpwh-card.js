@@ -616,11 +616,13 @@ class HpwhCard extends HTMLElement {
     this._updateAutoText(autoEntity);
 
     // SoC Gauge & Boost
-    let socVal = 100;
+    let hasSoc = false;
+    let socVal = 0;
     let socText = "--%";
     let boostVal = 0;
 
     if (socEntity && !isNaN(parseFloat(socEntity.state))) {
+      hasSoc = true;
       socVal = parseFloat(socEntity.state);
       // Cap nominal state strictly at 100%
       const displaySoc = Math.min(Math.round(socVal), 100);
@@ -636,16 +638,20 @@ class HpwhCard extends HTMLElement {
       }
     }
 
-    let gaugeColor = "#4caf50";
-    if (socVal < 60) {
-      gaugeColor = "#f44336";
-    } else if (socVal < 90) {
-      gaugeColor = "#ff9800";
-    } else if (boostVal > 0) {
-      gaugeColor = "#ffb300"; // Solar Gold
+    let gaugeColor = "#757575"; // Default neutral gray if unavailable
+    if (hasSoc) {
+      if (socVal < 60) {
+        gaugeColor = "#f44336";
+      } else if (socVal < 90) {
+        gaugeColor = "#ff9800";
+      } else if (boostVal > 0) {
+        gaugeColor = "#ffb300"; // Solar Gold
+      } else {
+        gaugeColor = "#4caf50";
+      }
     }
 
-    const normalizedPercent = Math.min(Math.max(socVal, 0), 100);
+    const normalizedPercent = hasSoc ? Math.min(Math.max(socVal, 0), 100) : 0;
     const strokeDash = `${(normalizedPercent * 188.5) / 100} 188.5`;
 
     this._elements.socMeter.setAttribute("stroke-dasharray", strokeDash);
@@ -665,8 +671,11 @@ class HpwhCard extends HTMLElement {
     }
 
     // Temperatures & Shower Buffer
-    this._elements.upperVal.textContent = upperEntity ? `${Math.round(parseFloat(upperEntity.state))}°` : "--";
-    this._elements.lowerVal.textContent = lowerEntity ? `${Math.round(parseFloat(lowerEntity.state))}°` : "--";
+    const upperNum = upperEntity && !isNaN(parseFloat(upperEntity.state)) ? Math.round(parseFloat(upperEntity.state)) : null;
+    const lowerNum = lowerEntity && !isNaN(parseFloat(lowerEntity.state)) ? Math.round(parseFloat(lowerEntity.state)) : null;
+
+    this._elements.upperVal.textContent = upperNum !== null ? `${upperNum}°` : "--";
+    this._elements.lowerVal.textContent = lowerNum !== null ? `${lowerNum}°` : "--";
 
     // Shower Buffer (Gallons or Minutes)
     const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
