@@ -490,11 +490,15 @@ class HpwhCard extends HTMLElement {
       });
 
       if (Array.isArray(events) && events.length > 0) {
-        // Filter events logged by HPWH Manager or matching our automation
+        // Filter events with an actual HPWH Manager message
         const hpwhEvents = events.filter(e =>
-          e.name === "HPWH Manager" ||
-          e.entity_id === this._config.automation_entity ||
-          (e.message && (e.message.includes("Boost") || e.message.includes("Reset") || e.message.includes("Baseline") || e.message.includes("Morning")))
+          e.message && (
+            e.name === "HPWH Manager" ||
+            e.message.includes("Boost") ||
+            e.message.includes("Reset") ||
+            e.message.includes("Baseline") ||
+            e.message.includes("Morning")
+          )
         );
 
         const targetEvents = hpwhEvents.length > 0 ? hpwhEvents : [];
