@@ -14,6 +14,33 @@ class HpwhCard extends HTMLElement {
     this._latestLog = null;
     this._lastLogFetch = 0;
     this._prevLastTriggered = null;
+    this._prevTargetTemp = null;
+    this._hasFetchedLogbook = false;
+    this._ticker = null;
+    this._retryTimeout = null;
+  }
+
+  connectedCallback() {
+    if (!this._ticker) {
+      this._ticker = setInterval(() => {
+        const autoEntity = this._config?.automation_entity ? this._hass?.states[this._config.automation_entity] : null;
+        this._updateAutoText(autoEntity);
+        if (Date.now() - this._lastLogFetch > 300000) {
+          this._fetchLogbook();
+        }
+      }, 60000);
+    }
+  }
+
+  disconnectedCallback() {
+    if (this._ticker) {
+      clearInterval(this._ticker);
+      this._ticker = null;
+    }
+    if (this._retryTimeout) {
+      clearTimeout(this._retryTimeout);
+      this._retryTimeout = null;
+    }
   }
 
   setConfig(config) {
@@ -493,11 +520,12 @@ class HpwhCard extends HTMLElement {
     });
   }
 
-  async _fetchLogbook() {
+  async _fetchLogbook(force = false) {
     if (!this._hass || !this._config) return;
     const now = Date.now();
-    if (now - this._lastLogFetch < 10000) return;
+    if (!force && now - this._lastLogFetch < 10000) return;
     this._lastLogFetch = now;
+    this._hasFetchedLogbook = true;
 
     const entities = [];
     if (this._config.entity) entities.push(this._config.entity);
@@ -515,19 +543,12 @@ class HpwhCard extends HTMLElement {
       });
 
       if (Array.isArray(events) && events.length > 0) {
-        // Filter events with an actual HPWH Manager message
+        // Filter strictly for HPWH Manager events with a message
         const hpwhEvents = events.filter(e =>
-          e.message && (
-            e.name === "HPWH Manager" ||
-            e.message.includes("Boost") ||
-            e.message.includes("Reset") ||
-            e.message.includes("Baseline") ||
-            e.message.includes("Morning")
-          )
+          e.name === "HPWH Manager" && e.message
         );
 
-        const targetEvents = hpwhEvents.length > 0 ? hpwhEvents : [];
-        const latest = targetEvents[targetEvents.length - 1];
+        const latest = hpwhEvents.length > 0 ? hpwhEvents[hpwhEvents.length - 1] : null;
 
         if (latest && latest.message) {
           let whenDate;
@@ -644,9 +665,20 @@ class HpwhCard extends HTMLElement {
 
     // Automation activity text & live logbook fetch
     const lastTriggered = autoEntity?.attributes?.last_triggered;
-    if (!this._latestLog || (lastTriggered && lastTriggered !== this._prevLastTriggered)) {
+    const curTargetTemp = climateEntity?.attributes?.temperature;
+    const shouldFetch = !this._hasFetchedLogbook ||
+      (lastTriggered && lastTriggered !== this._prevLastTriggered) ||
+      (curTargetTemp !== undefined && curTargetTemp !== this._prevTargetTemp);
+
+    if (shouldFetch) {
       this._prevLastTriggered = lastTriggered;
+      this._prevTargetTemp = curTargetTemp;
       this._fetchLogbook();
+      // Retry in 2s to handle database write latency
+      if (this._hasFetchedLogbook) {
+        clearTimeout(this._retryTimeout);
+        this._retryTimeout = setTimeout(() => this._fetchLogbook(true), 2000);
+      }
     }
     this._updateAutoText(autoEntity);
 
