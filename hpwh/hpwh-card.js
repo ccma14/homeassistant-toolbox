@@ -23,6 +23,8 @@ class HpwhCard extends HTMLElement {
     this._config = {
       title: "♨️ Heat Pump Water Heater",
       shower_display: "minutes",
+      boost_temperature: 140,
+      reset_temperature: 120,
       ...config
     };
     if (this._initialized) {
@@ -85,6 +87,16 @@ class HpwhCard extends HTMLElement {
               ]
             }
           }
+        },
+        {
+          name: "boost_temperature",
+          default: 140,
+          selector: { number: { min: 60, max: 160, step: 1, mode: "box" } }
+        },
+        {
+          name: "reset_temperature",
+          default: 120,
+          selector: { number: { min: 60, max: 140, step: 1, mode: "box" } }
         },
         {
           name: "title",
@@ -401,7 +413,9 @@ class HpwhCard extends HTMLElement {
       showerVal: this.shadowRoot.getElementById("shower-val"),
       showerItem: this.shadowRoot.getElementById("click-shower"),
       autoRow: this.shadowRoot.getElementById("click-auto"),
-      autoText: this.shadowRoot.getElementById("auto-text")
+      autoText: this.shadowRoot.getElementById("auto-text"),
+      btnBoost: this.shadowRoot.getElementById("btn-boost"),
+      btnReset: this.shadowRoot.getElementById("btn-reset")
     };
 
     // Attach click events once
@@ -454,16 +468,20 @@ class HpwhCard extends HTMLElement {
     });
 
     this.shadowRoot.getElementById("btn-boost")?.addEventListener("click", () => {
+      const target = this._config.boost_temperature ?? 140;
+      if (!window.confirm(`Boost water heater to ${target}°?`)) return;
       this._callService("climate.set_temperature", {
         entity_id: this._config.entity,
-        temperature: 140
+        temperature: target
       });
     });
 
     this.shadowRoot.getElementById("btn-reset")?.addEventListener("click", () => {
+      const target = this._config.reset_temperature ?? 120;
+      if (!window.confirm(`Reset water heater to ${target}°?`)) return;
       this._callService("climate.set_temperature", {
         entity_id: this._config.entity,
-        temperature: 120
+        temperature: target
       });
     });
   }
@@ -606,6 +624,16 @@ class HpwhCard extends HTMLElement {
     // Target Temperature
     const targetTemp = climateEntity?.attributes?.temperature !== undefined ? `${climateEntity.attributes.temperature}°` : "--";
     this._elements.targetVal.textContent = targetTemp;
+
+    // Action button labels
+    const boostTarget = this._config.boost_temperature ?? 140;
+    const resetTarget = this._config.reset_temperature ?? 120;
+    if (this._elements.btnBoost) {
+      this._elements.btnBoost.textContent = `☀️ Boost ${boostTarget}°`;
+    }
+    if (this._elements.btnReset) {
+      this._elements.btnReset.textContent = `🔄 Reset ${resetTarget}°`;
+    }
 
     // Automation activity text & live logbook fetch
     const lastTriggered = autoEntity?.attributes?.last_triggered;
