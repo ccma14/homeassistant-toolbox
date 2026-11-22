@@ -439,28 +439,35 @@ class HpwhCard extends HTMLElement {
       this._fireMoreInfo(this._config.lower_temp_sensor);
     });
 
+    let showerClickTimeout = null;
     const showerItem = this.shadowRoot.getElementById("click-shower");
-    showerItem?.addEventListener("click", () => {
-      const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
-      const showMinutes = activeUnit !== "gallons";
-
-      const minSensorId = this._config.shower_minutes_sensor || this._config.shower_sensor || "sensor.water_heater_shower_minutes";
-      const galSensorId = this._config.shower_gallons_sensor || "sensor.water_heater_shower_gallons";
-
-      let targetSensor;
-      if (showMinutes) {
-        targetSensor = this._hass?.states[minSensorId] ? minSensorId : (this._hass?.states["sensor.water_heater_shower_buffer"] ? "sensor.water_heater_shower_buffer" : (this._config.soc_sensor || this._config.entity));
-      } else {
-        targetSensor = this._hass?.states[galSensorId] ? galSensorId : (this._hass?.states[minSensorId] ? minSensorId : (this._config.soc_sensor || this._config.entity));
-      }
-      this._fireMoreInfo(targetSensor);
-    });
-
-    showerItem?.addEventListener("dblclick", (e) => {
+    showerItem?.addEventListener("click", (e) => {
       e.stopPropagation();
-      const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
-      this._displayUnit = activeUnit === "minutes" ? "gallons" : "minutes";
-      this._updateContent();
+      if (showerClickTimeout) {
+        // Double-click detected: cancel more-info dialog and toggle units
+        clearTimeout(showerClickTimeout);
+        showerClickTimeout = null;
+        const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
+        this._displayUnit = activeUnit === "minutes" ? "gallons" : "minutes";
+        this._updateContent();
+      } else {
+        showerClickTimeout = setTimeout(() => {
+          showerClickTimeout = null;
+          const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
+          const showMinutes = activeUnit !== "gallons";
+
+          const minSensorId = this._config.shower_minutes_sensor || this._config.shower_sensor || "sensor.water_heater_shower_minutes";
+          const galSensorId = this._config.shower_gallons_sensor || "sensor.water_heater_shower_gallons";
+
+          let targetSensor;
+          if (showMinutes) {
+            targetSensor = this._hass?.states[minSensorId] ? minSensorId : (this._hass?.states["sensor.water_heater_shower_buffer"] ? "sensor.water_heater_shower_buffer" : (this._config.soc_sensor || this._config.entity));
+          } else {
+            targetSensor = this._hass?.states[galSensorId] ? galSensorId : (this._hass?.states[minSensorId] ? minSensorId : (this._config.soc_sensor || this._config.entity));
+          }
+          this._fireMoreInfo(targetSensor);
+        }, 250);
+      }
     });
 
     this.shadowRoot.getElementById("click-auto")?.addEventListener("click", () => {
