@@ -31,8 +31,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install yamllint
-        run: pip install yamllint
+      - name: Install Python dependencies
+        run: pip install yamllint jinja2
 
       - name: Run yamllint
         run: yamllint -c .yamllint.yaml .
@@ -57,7 +57,7 @@ jobs:
         run: |
           mkdir -p hpwh/tests/mock_config/blueprints/automation/hpwh
           cp hpwh/blueprint.yaml hpwh/tests/mock_config/blueprints/automation/hpwh/blueprint.yaml
-          bash hpwh/install.sh --local -c hpwh/tests/mock_config
+          bash hpwh/install.sh --local --yes -c hpwh/tests/mock_config
 
       - name: Home Assistant Core check_config
         uses: frenck/action-home-assistant@v1.4.1

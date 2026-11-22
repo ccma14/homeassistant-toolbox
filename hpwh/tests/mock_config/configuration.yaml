@@ -8,7 +8,6 @@ homeassistant:
   name: Mock Home
   unit_system: us_customary
   time_zone: UTC
-  packages: !include_dir_named packages
 
 # Mock entities to satisfy blueprint and package schema validation (T-e)
 climate:

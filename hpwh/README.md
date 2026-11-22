@@ -93,23 +93,24 @@ To install the dashboard card, State of Charge (SoC) gauge, and usable shower me
 
 ---
 
-### Option A: 1-Line Installer (Recommended)
-If you have the **Advanced SSH & Web Terminal** add-on or terminal access, run this single command inside Home Assistant. It automatically installs the sensor package, downloads the dashboard card, enables `packages:` in `configuration.yaml`, and registers the Lovelace dashboard resource:
+### Option A: 1-Line Installer
+If you have the **Advanced SSH & Web Terminal** add-on or terminal access, run this command inside Home Assistant. It detects your configured packages directory, installs the sensor package and dashboard card, enables `packages:` in `configuration.yaml` if needed, and registers the Lovelace dashboard resource:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/install.sh | bash
 ```
+*(Tip: pass `--dry-run` to preview actions without writing files, e.g. `... | bash -s -- --dry-run`)*
 
 > [!IMPORTANT]
 > **Full Home Assistant Restart Required:**
-> Home Assistant caches packages and `.storage` dashboard resources in memory at boot time. After running the installer, you **must perform a full Home Assistant restart** (**Settings > System > Restart**) for the new package and dashboard card to load.
+> Home Assistant caches packages and `.storage` dashboard resources in memory at boot time. After running the installer, you **must perform a full Home Assistant restart** (**Settings > System > Restart**) before adding the card to your dashboard.
 
 **What the installer does safely:**
-* **Files Placed:** Downloads `hpwh.yaml` into `/config/packages/` and `hpwh-card.js` into `/config/www/`.
-* **Protects User Customizations:** If you customized entity IDs or tank calibration in `packages/hpwh.yaml`, re-running the installer automatically creates a timestamped backup (`hpwh.yaml.bak-<timestamp>`) before updating.
-* **Safe Configuration:** If `packages:` is not yet configured, backs up `configuration.yaml` to `configuration.yaml.hpwh.bak` and safely inserts package support (or warns if your file uses custom split includes).
+* **Auto-Detects Packages Directory:** Inspects `configuration.yaml` to detect your configured packages directory (defaulting to `packages/`, or custom paths like `integrations/`).
+* **Protects User Customizations:** If you customized entity IDs or tank calibration in `hpwh.yaml`, subsequent installer runs preserve your local changes and save the latest upstream file to `hpwh.yaml.upstream-<timestamp>`. Use `--force` if you want to overwrite your local edits.
+* **Safe Configuration Handling:** If `packages:` is not yet configured, backs up `configuration.yaml` to `configuration.yaml.hpwh.bak` and safely inserts package support. If your configuration uses custom split includes (`!include`) or non-standard indentation, the installer refrains from touching `configuration.yaml`, prints a clear `INCOMPLETE` notice with manual instructions, and exits with code 2.
 * **Lovelace Registration:** Safely registers `/local/hpwh-card.js` in `.storage/lovelace_resources` without touching or erasing other custom cards.
-* **Uninstall & Dry-Run:** Run with `--dry-run` to preview actions, or `--uninstall` to remove all installed HPWH files and unregister the card resource.
+* **Uninstall & Dry-Run:** Run with `--dry-run` to preview actions, or `--uninstall` to safely remove all installed HPWH files and unregister the card resource.
 
 ---
 

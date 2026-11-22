@@ -2,8 +2,8 @@
 # Heat Pump Water Heater: State of Charge (SoC) & Utility Package
 # ==============================================================================
 # Installation:
-# Drop this file into your Home Assistant '/config/packages/' directory as:
-#   /config/packages/hpwh.yaml
+# Drop this file into your Home Assistant packages directory as:
+#   hpwh.yaml
 #
 # (Ensure 'homeassistant: packages: !include_dir_named packages' is in your configuration.yaml)
 #
@@ -18,8 +18,8 @@
 #   - sensor.water_heater_upper_tank_temperature
 #   - sensor.water_heater_lower_tank_temperature
 #
-# Note: Downstream sensors ('shower_gallons' and 'shower_minutes') automatically inherit
-# the inlet temperature and tank volume from the State of Charge sensor.
+# Note: Downstream sensors ('shower_gallons', 'shower_minutes', 'solar_boost', and 'raw_soc')
+# automatically inherit inlet temperature and tank volume from the State of Charge sensor.
 # ==============================================================================
 
 template:
@@ -33,7 +33,7 @@ template:
           {{ has_value('sensor.water_heater_upper_tank_temperature') and
              has_value('sensor.water_heater_lower_tank_temperature') }}
         state: >-
-          {# --- Calibration Parameters --- #}
+          {# --- Calibration Parameters (Configure once here and in attributes below) --- #}
           {% set inlet_cfg = 65.0 %}
           {% set cold_inlet = states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) %}
           {% set target_baseline = 120.0 %}
@@ -46,7 +46,6 @@ template:
           {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
 
           {# Compute SoC relative to cold inlet and normal 120F target (strictly capped at 100%) #}
-          {# Surplus energy above 100% (e.g. solar boost to 140F) is tracked in attributes.solar_boost #}
           {% set soc = ((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100 %}
           {{ [ [ soc | round(0), 0 ] | max, 100 ] | min }}
 
@@ -60,17 +59,14 @@ template:
           target_baseline_temperature: 120.0
           solar_boost: >-
             {# Thermal energy surplus above 100% capacity (0% to ~36% during 140F solar boost) #}
-            {% set inlet_cfg = 65.0 %}
-            {% set cold_inlet = states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) %}
-            {% set target_baseline = 120.0 %}
-            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
-            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
-            {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
-            {% set raw_soc = ((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100 %}
-            {{ [ (raw_soc - 100) | round(0), 0 ] | max }}
+            {% set raw = state_attr('sensor.water_heater_state_of_charge', 'raw_soc') %}
+            {% if is_number(raw) %}
+              {{ [ (raw | float - 100) | round(0), 0 ] | max }}
+            {% else %}
+              0
+            {% endif %}
           raw_soc: >-
-            {% set inlet_cfg = 65.0 %}
-            {% set cold_inlet = states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) %}
+            {% set cold_inlet = state_attr('sensor.water_heater_state_of_charge', 'cold_inlet_temperature') | float(65.0) %}
             {% set target_baseline = 120.0 %}
             {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
             {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}

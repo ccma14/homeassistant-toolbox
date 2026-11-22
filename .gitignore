@@ -2,6 +2,7 @@
 node_modules/
 __pycache__/
 *.pyc
+*.bak*
 .pytest_cache/
 hpwh/tests/mock_config/packages/
 hpwh/tests/mock_config/blueprints/

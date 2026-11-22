@@ -201,7 +201,7 @@ if [ "${RUN_HA_CONTAINER}" = true ]; then
     echo "  • Preparing mock config and running 'hass --script check_config' via Colima/Docker..."
     mkdir -p "${REPO_ROOT}/hpwh/tests/mock_config/blueprints/automation/hpwh"
     cp "${REPO_ROOT}/hpwh/blueprint.yaml" "${REPO_ROOT}/hpwh/tests/mock_config/blueprints/automation/hpwh/blueprint.yaml"
-    bash "${REPO_ROOT}/hpwh/install.sh" --local -c "${REPO_ROOT}/hpwh/tests/mock_config" >/dev/null
+    bash "${REPO_ROOT}/hpwh/install.sh" --local --yes -c "${REPO_ROOT}/hpwh/tests/mock_config" >/dev/null
     if docker run --rm -v "${REPO_ROOT}/hpwh/tests/mock_config:/config:ro" ghcr.io/home-assistant/home-assistant:stable python3 -m homeassistant --config /config --script check_config; then
       echo -e "  • HA Core validation: ${GREEN}PASS${NC}"
     else
