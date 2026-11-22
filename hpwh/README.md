@@ -41,7 +41,7 @@ Using the tank as a thermal battery works well, but evening water draws (such as
 | File | Type | Description |
 | :--- | :--- | :--- |
 | [`blueprint.yaml`](blueprint.yaml) | **Automation Blueprint** | Daily schedule and stratification manager. |
-| [`templates.yaml`](templates.yaml) | *Optional Sensors* | Template sensors for State of Charge (0–100% + solar boost), shower minutes, and gallons. |
+| [`hpwh.yaml`](hpwh.yaml) / [`templates.yaml`](templates.yaml) | *Sensors (Package or Templates)* | Template sensors for State of Charge (0–100% + solar boost), shower minutes, and gallons. |
 | [`hpwh-card.js`](hpwh-card.js) | *Custom UI Card* | Lovelace card with battery gauge, metrics, and card editor. |
 
 ---
@@ -87,15 +87,30 @@ Then reload blueprints under **Developer Tools > YAML > Automations**.
 
 If you'd like a visual dashboard with a thermal battery gauge, stratification spread, shower minutes, and gallon estimates:
 
-### Step 2: Install the State of Charge (SoC) Sensor
+### Step 2: Install the State of Charge (SoC) & Utility Sensors
 
-The SoC sensor computes true tank thermal reserves using a 40% upper / 60% lower volumetric weighting:
+The sensors compute true tank thermal reserves (0–100% nominal SoC + solar boost) and human-friendly shower minutes and gallons buffers using volumetric weighting.
 
-#### If your `configuration.yaml` uses `template: !include templates.yaml`:
-Open your `templates.yaml` and paste the contents of [`templates.yaml`](templates.yaml) (starting from the `- sensor:` line). If your sensor names differ from the defaults, simply find & replace them.
+#### Option A: Drop-in Home Assistant Package (Recommended)
+Packages provide self-contained, drop-in YAML with zero indentation errors or manual editing of `configuration.yaml`.
+
+1. Ensure packages are enabled in your `configuration.yaml` (add under `homeassistant:` if not already present):
+   ```yaml
+   homeassistant:
+     packages: !include_dir_named packages
+   ```
+2. Download [`hpwh.yaml`](hpwh.yaml) directly into your Home Assistant `/config/packages/` directory:
+   ```bash
+   wget -O /config/packages/hpwh.yaml https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh.yaml
+   ```
+   *(When updating in the future, re-running this command replaces the package cleanly with no manual editing).*
+3. Reload template entities under **Developer Tools > YAML > Template Entities**.
+
+#### Option B: Manual Include via `templates.yaml` / `configuration.yaml`
+If your `configuration.yaml` uses `template: !include templates.yaml`, paste the contents of [`templates.yaml`](templates.yaml) starting from the `- sensor:` line.
 
 #### Reloading:
-Navigate to **Developer Tools > YAML** and click **Template Entities**. The sensor `sensor.water_heater_state_of_charge` will become active immediately without a restart.
+Navigate to **Developer Tools > YAML** and click **Template Entities**. The sensors (`sensor.water_heater_state_of_charge`, `sensor.water_heater_shower_gallons`, `sensor.water_heater_shower_minutes`) will activate immediately without restarting Home Assistant.
 
 ---
 

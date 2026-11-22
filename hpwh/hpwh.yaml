@@ -1,0 +1,148 @@
+# ==============================================================================
+# Heat Pump Water Heater: State of Charge (SoC) & Utility Package
+# ==============================================================================
+# Installation:
+# Drop this file into your Home Assistant '/config/packages/' directory as:
+#   /config/packages/hpwh.yaml
+#
+# (Ensure 'homeassistant: packages: !include_dir_named packages' is in your configuration.yaml)
+#
+# Configuration:
+# To customize parameters, adjust the settings below in 'sensor.water_heater_state_of_charge':
+#   - inlet_cfg: Enter a fixed cold water temp in °F (e.g. 65.0) OR an entity ID
+#     (e.g. 'sensor.water_inlet_temperature' or 'sensor.ground_temperature')
+#   - tank_cfg: Total tank capacity in gallons (default: 65.0) OR an entity ID
+#   - target_baseline: Baseline setpoint for 100% nominal SoC (default: 120.0°F)
+#
+# If your tank sensor entity IDs differ, use Find & Replace:
+#   - sensor.water_heater_upper_tank_temperature
+#   - sensor.water_heater_lower_tank_temperature
+#
+# Note: Downstream sensors ('shower_gallons' and 'shower_minutes') automatically inherit
+# the inlet temperature and tank volume from the State of Charge sensor.
+# ==============================================================================
+
+template:
+  - sensor:
+      - name: "Water Heater State of Charge"
+        unique_id: water_heater_state_of_charge
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:battery-charging-high
+        availability: >-
+          {{ has_value('sensor.water_heater_upper_tank_temperature') and
+             has_value('sensor.water_heater_lower_tank_temperature') }}
+        state: >-
+          {# --- Calibration Parameters --- #}
+          {% set inlet_cfg = 65.0 %}
+          {% set cold_inlet = states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) %}
+          {% set target_baseline = 120.0 %}
+
+          {# Current sensor readings #}
+          {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
+          {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
+
+          {# Volumetric weighted average (HPWH condenser coil is wrapped around lower ~60% of tank) #}
+          {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
+
+          {# Compute SoC relative to cold inlet and normal 120F target (strictly capped at 100%) #}
+          {# Surplus energy above 100% (e.g. solar boost to 140F) is tracked in attributes.solar_boost #}
+          {% set soc = ((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100 %}
+          {{ [ [ soc | round(0), 0 ] | max, 100 ] | min }}
+
+        attributes:
+          cold_inlet_temperature: >-
+            {% set inlet_cfg = 65.0 %}
+            {{ states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) }}
+          tank_gallons: >-
+            {% set tank_cfg = 65.0 %}
+            {{ states(tank_cfg) | float(65.0) if tank_cfg is string and has_value(tank_cfg) else (tank_cfg | float(65.0)) }}
+          target_baseline_temperature: 120.0
+          solar_boost: >-
+            {# Thermal energy surplus above 100% capacity (0% to ~36% during 140F solar boost) #}
+            {% set inlet_cfg = 65.0 %}
+            {% set cold_inlet = states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) %}
+            {% set target_baseline = 120.0 %}
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
+            {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
+            {% set raw_soc = ((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100 %}
+            {{ [ (raw_soc - 100) | round(0), 0 ] | max }}
+          raw_soc: >-
+            {% set inlet_cfg = 65.0 %}
+            {% set cold_inlet = states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) %}
+            {% set target_baseline = 120.0 %}
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
+            {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
+            {{ (((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100) | round(1) }}
+          upper_temperature: >-
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') %}
+            {{ upper | float if is_number(upper) else none }}
+          lower_temperature: >-
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') %}
+            {{ lower | float if is_number(lower) else none }}
+          average_temperature: >-
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') %}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') %}
+            {% if is_number(upper) and is_number(lower) %}
+              {{ ((upper | float * 0.4) + (lower | float * 0.6)) | round(1) }}
+            {% else %}
+              none
+            {% endif %}
+          tank_spread: >-
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') %}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') %}
+            {% if is_number(upper) and is_number(lower) %}
+              {{ (upper | float - lower | float) | round(1) }}
+            {% else %}
+              none
+            {% endif %}
+
+      - name: "Water Heater Shower Gallons"
+        unique_id: water_heater_shower_gallons
+        unit_of_measurement: "gal"
+        device_class: volume_storage
+        state_class: measurement
+        icon: mdi:water-boiler
+        availability: >-
+          {{ has_value('sensor.water_heater_upper_tank_temperature') and
+             has_value('sensor.water_heater_lower_tank_temperature') }}
+        state: >-
+          {# Estimated gallons of 105F shower water available in tank #}
+          {% set cold_inlet = state_attr('sensor.water_heater_state_of_charge', 'cold_inlet_temperature') | float(65.0) %}
+          {% set tank_gallons = state_attr('sensor.water_heater_state_of_charge', 'tank_gallons') | float(65.0) %}
+          {% set shower_temp = 105.0 %}
+          {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
+          {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(120) %}
+          {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
+          {% if avg_temp > cold_inlet %}
+            {% set total_heat_btu = tank_gallons * 8.33 * (avg_temp - cold_inlet) %}
+            {% set gal_at_105 = total_heat_btu / (8.33 * (shower_temp - cold_inlet)) %}
+            {{ [gal_at_105 | round(0), 0] | max }}
+          {% else %}
+            0
+          {% endif %}
+        attributes:
+          delivery_temperature: 105.0
+          cold_inlet_temperature: >-
+            {{ state_attr('sensor.water_heater_state_of_charge', 'cold_inlet_temperature') | float(65.0) }}
+          tank_gallons: >-
+            {{ state_attr('sensor.water_heater_state_of_charge', 'tank_gallons') | float(65.0) }}
+
+      - name: "Water Heater Shower Minutes"
+        unique_id: water_heater_shower_minutes
+        unit_of_measurement: "min"
+        device_class: duration
+        state_class: measurement
+        icon: mdi:shower-head
+        availability: >-
+          {{ has_value('sensor.water_heater_shower_gallons') }}
+        state: >-
+          {# Estimated shower minutes derived from available gallons @ 2.0 GPM #}
+          {% set shower_gpm = 2.0 %}
+          {% set gal = states('sensor.water_heater_shower_gallons') | float(0) %}
+          {{ [ (gal / shower_gpm) | round(0), 0 ] | max }}
+        attributes:
+          flow_rate_gpm: 2.0
+          delivery_temperature: 105.0
