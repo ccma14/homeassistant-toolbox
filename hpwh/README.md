@@ -91,6 +91,9 @@ If you'd like a visual dashboard with a thermal battery gauge, stratification sp
 
 The sensors compute true tank thermal reserves (0–100% nominal SoC + solar boost) and human-friendly shower minutes and gallons buffers using volumetric weighting.
 
+> [!TIP]
+> **Configuration Directory Paths:** In Home Assistant OS (e.g. inside the **File Editor** or **Studio Code Server** add-ons), the configuration root directory is displayed as `/homeassistant/`. In container/core installations or SSH terminals, it is traditionally `/config/`. Both refer to the same folder where `configuration.yaml` resides.
+
 #### Option A: Drop-in Home Assistant Package (Recommended)
 Packages provide self-contained, drop-in YAML with zero indentation errors or manual editing of `configuration.yaml`.
 
@@ -99,10 +102,11 @@ Packages provide self-contained, drop-in YAML with zero indentation errors or ma
    homeassistant:
      packages: !include_dir_named packages
    ```
-2. Download [`hpwh.yaml`](hpwh.yaml) directly into your Home Assistant `/config/packages/` directory:
+2. Download or place [`hpwh.yaml`](hpwh.yaml) into your `packages/` folder (e.g. `/config/packages/hpwh.yaml` or `/homeassistant/packages/hpwh.yaml`):
    ```bash
    wget -O /config/packages/hpwh.yaml https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh.yaml
    ```
+   *(If using the File Editor UI: create a `packages` folder next to `configuration.yaml`, create `hpwh.yaml` inside it, and paste the file contents).*
    *(When updating in the future, re-running this command replaces the package cleanly with no manual editing).*
 3. Reload template entities under **Developer Tools > YAML > Template Entities**.
 
@@ -123,10 +127,11 @@ Navigate to **Developer Tools > YAML** and click **Template Entities**. The sens
 The card displays an SVG battery dial, shower metrics (minutes or gallons), tank temperatures, and manual boost/reset actions.
 
 #### 1. Install the Card:
-1. Download [`hpwh-card.js`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js) into your Home Assistant directory at `/config/www/hpwh-card.js`:
+1. Download [`hpwh-card.js`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js) into your `www/` directory (e.g. `/config/www/hpwh-card.js` or `/homeassistant/www/hpwh-card.js`):
    ```bash
    wget -O /config/www/hpwh-card.js https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js
    ```
+   *(Note: The `/www/` folder inside your config directory maps to the `/local/` URL in Home Assistant).*
 2. In Home Assistant, open the **Dashboard Resources** page:
 
    [![Open your Home Assistant instance and show your dashboard resources.](https://my.home-assistant.io/badges/lovelace_resources.svg)](https://my.home-assistant.io/redirect/lovelace_resources/)
