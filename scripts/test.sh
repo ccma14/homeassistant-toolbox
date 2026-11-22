@@ -148,6 +148,16 @@ if [ "${RUN_HPWH}" = true ]; then
     python3 hpwh/tests/test_templates.py
     FAILED=$((FAILED + 1))
   fi
+
+  # Installer tests
+  echo -n "    • test_installer.sh (clean sandbox install & idempotency check): "
+  if bash hpwh/tests/test_installer.sh >/dev/null 2>&1; then
+    echo -e "${GREEN}PASS${NC}"
+  else
+    echo -e "${RED}FAIL${NC}"
+    bash hpwh/tests/test_installer.sh
+    FAILED=$((FAILED + 1))
+  fi
 fi
 
 # ------------------------------------------------------------------------------

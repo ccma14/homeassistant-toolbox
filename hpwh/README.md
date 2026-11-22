@@ -87,6 +87,20 @@ Then reload blueprints under **Developer Tools > YAML > Automations** (or **Sett
 
 If you'd like a visual dashboard with a thermal battery gauge, stratification spread, shower minutes, and gallon estimates:
 
+### ⚡ Quick Setup: 1-Line Installer (Recommended)
+If you have the **Advanced SSH & Web Terminal** add-on or terminal access, run this single command inside Home Assistant. It automatically installs the sensor package, downloads the dashboard card, enables `packages:` in `configuration.yaml`, and registers the Lovelace dashboard resource:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/install.sh | bash
+```
+*(Re-running this command in the future cleanly updates both the card and package to the latest version with zero manual editing).*
+
+---
+
+### Manual Setup
+
+If you prefer to install files manually or do not have terminal access:
+
 ### Step 2: Install the State of Charge (SoC) & Utility Sensors
 
 The sensors compute true tank thermal reserves (0–100% nominal SoC + solar boost) and human-friendly shower minutes and gallons buffers using volumetric weighting.

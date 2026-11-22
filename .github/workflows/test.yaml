@@ -43,6 +43,9 @@ jobs:
       - name: Run component template tests (hpwh)
         run: python3 hpwh/tests/test_templates.py
 
+      - name: Run component installer tests (hpwh)
+        run: bash hpwh/tests/test_installer.sh
+
   ha-validation:
     name: Home Assistant Config & Blueprint Validation
     runs-on: ubuntu-latest
