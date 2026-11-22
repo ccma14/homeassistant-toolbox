@@ -50,13 +50,22 @@ FAILED=0
 echo -e "\n${BLUE}[1/4] Running Global Static Analysis...${NC}"
 
 # 1a. YAML Linting
-if command -v yamllint >/dev/null 2>&1; then
+YAMLLINT_CMD=""
+if command -v yamllint >/dev/null 2>&1 && yamllint --version >/dev/null 2>&1; then
+  YAMLLINT_CMD="yamllint"
+elif command -v pyenv >/dev/null 2>&1 && PYENV_VERSION=3.12.9 yamllint --version >/dev/null 2>&1; then
+  YAMLLINT_CMD="PYENV_VERSION=3.12.9 yamllint"
+elif python3 -m yamllint --version >/dev/null 2>&1; then
+  YAMLLINT_CMD="python3 -m yamllint"
+fi
+
+if [ -n "${YAMLLINT_CMD}" ]; then
   echo -n "  • yamllint: "
-  if yamllint -c .yamllint.yaml . >/dev/null 2>&1; then
+  if eval "${YAMLLINT_CMD} -c .yamllint.yaml ." >/dev/null 2>&1; then
     echo -e "${GREEN}PASS${NC}"
   else
     echo -e "${RED}FAIL${NC}"
-    yamllint -c .yamllint.yaml .
+    eval "${YAMLLINT_CMD} -c .yamllint.yaml ."
     FAILED=$((FAILED + 1))
   fi
 else
@@ -148,7 +157,10 @@ echo -e "\n${BLUE}[3/4] Home Assistant Core Validation...${NC}"
 
 if [ "${RUN_HA_CONTAINER}" = true ]; then
   if command -v docker >/dev/null 2>&1 && docker ps >/dev/null 2>&1; then
-    echo "  • Running 'hass --script check_config' via Colima/Docker..."
+    echo "  • Preparing mock config and running 'hass --script check_config' via Colima/Docker..."
+    mkdir -p "${REPO_ROOT}/hpwh/tests/mock_config/packages" "${REPO_ROOT}/hpwh/tests/mock_config/blueprints/automation/hpwh"
+    cp "${REPO_ROOT}/hpwh/hpwh.yaml" "${REPO_ROOT}/hpwh/tests/mock_config/packages/hpwh.yaml"
+    cp "${REPO_ROOT}/hpwh/blueprint.yaml" "${REPO_ROOT}/hpwh/tests/mock_config/blueprints/automation/hpwh/blueprint.yaml"
     if docker run --rm -v "${REPO_ROOT}/hpwh/tests/mock_config:/config:ro" ghcr.io/home-assistant/home-assistant:stable python3 -m homeassistant --config /config --script check_config; then
       echo -e "  • HA Core validation: ${GREEN}PASS${NC}"
     else

@@ -50,12 +50,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare mock config
+        run: |
+          mkdir -p hpwh/tests/mock_config/packages hpwh/tests/mock_config/blueprints/automation/hpwh
+          cp hpwh/hpwh.yaml hpwh/tests/mock_config/packages/hpwh.yaml
+          cp hpwh/blueprint.yaml hpwh/tests/mock_config/blueprints/automation/hpwh/blueprint.yaml
+
       - name: Home Assistant Core check_config
         uses: frenck/action-home-assistant@v1.4.1
         with:
           path: hpwh/tests/mock_config
-
-      - name: Home Assistant Blueprint Validate
-        uses: klausenbusk/action-home-assistant-blueprint-validate@v2
-        with:
-          path: hpwh/blueprint.yaml
