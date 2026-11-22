@@ -200,14 +200,14 @@ class HpwhCard extends HTMLElement {
 
     if (hass && hass.states) {
       const entities = Object.keys(hass.states);
-      const climateMatch = entities.find(e => e.startsWith("climate.") && (e.includes("water_heater") || e.includes("hpwh") || e.includes("econet"))) ||
+      const climateMatch = entities.find(e => e.startsWith("climate.") && (e.includes("water_heater") || e.includes("hpwh") || e.includes("econet") || e.includes("heatpump") || e.includes("heat_pump"))) ||
         entities.find(e => e.startsWith("climate."));
       if (climateMatch) climateEntity = climateMatch;
 
       const socMatch = entities.find(e => e.startsWith("sensor.") && (e.includes("state_of_charge") || e.includes("soc")));
       if (socMatch) socSensor = socMatch;
 
-      const powerMatch = entities.find(e => e.startsWith("sensor.") && (e.includes("power") || e.includes("watts")) && (e.includes("water_heater") || e.includes("hpwh")));
+      const powerMatch = entities.find(e => e.startsWith("sensor.") && (e.includes("power") || e.includes("watts")) && (e.includes("water_heater") || e.includes("hpwh") || e.includes("heatpump") || e.includes("heat_pump")));
       if (powerMatch) powerSensor = powerMatch;
 
       const upperMatch = entities.find(e => e.startsWith("sensor.") && e.includes("upper") && (e.includes("temp") || e.includes("tank")));

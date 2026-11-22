@@ -1,0 +1,14 @@
+{
+  "name": "homeassistant-toolbox",
+  "version": "1.2.0",
+  "description": "Monorepo for Home Assistant tools, blueprints, packages, and custom cards",
+  "private": true,
+  "scripts": {
+    "test": "./scripts/test.sh",
+    "test:hpwh": "./scripts/test.sh hpwh",
+    "lint:js": "eslint hpwh/**/*.js"
+  },
+  "devDependencies": {
+    "eslint": "^10.15.0"
+  }
+}
