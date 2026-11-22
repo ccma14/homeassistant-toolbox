@@ -25,6 +25,9 @@ template:
         unit_of_measurement: "%"
         state_class: measurement
         icon: mdi:battery-charging-high
+        availability: >-
+          {{ has_value('sensor.water_heater_upper_tank_temperature') and
+             has_value('sensor.water_heater_lower_tank_temperature') }}
         state: >-
           {# Baseline calibration parameters #}
           {% set cold_inlet = 65.0 %}
@@ -61,23 +64,36 @@ template:
             {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
             {{ (((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100) | round(1) }}
           upper_temperature: >-
-            {{ states('sensor.water_heater_upper_tank_temperature') | float(0) }}
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') %}
+            {{ upper | float if is_number(upper) else none }}
           lower_temperature: >-
-            {{ states('sensor.water_heater_lower_tank_temperature') | float(0) }}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') %}
+            {{ lower | float if is_number(lower) else none }}
           average_temperature: >-
-            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
-            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(120) %}
-            {{ ((upper * 0.4) + (lower * 0.6)) | round(1) }}
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') %}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') %}
+            {% if is_number(upper) and is_number(lower) %}
+              {{ ((upper | float * 0.4) + (lower | float * 0.6)) | round(1) }}
+            {% else %}
+              none
+            {% endif %}
           tank_spread: >-
-            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(0) %}
-            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(0) %}
-            {{ (upper - lower) | round(1) }}
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') %}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') %}
+            {% if is_number(upper) and is_number(lower) %}
+              {{ (upper | float - lower | float) | round(1) }}
+            {% else %}
+              none
+            {% endif %}
 
       - name: "Water Heater Shower Minutes"
         unique_id: water_heater_shower_minutes
         unit_of_measurement: "min"
         state_class: measurement
         icon: mdi:shower-head
+        availability: >-
+          {{ has_value('sensor.water_heater_upper_tank_temperature') and
+             has_value('sensor.water_heater_lower_tank_temperature') }}
         state: >-
           {# Estimated minutes of 105F shower available at 2.0 GPM flow rate #}
           {% set cold_inlet = 65.0 %}
@@ -104,6 +120,9 @@ template:
         unit_of_measurement: "gal"
         state_class: measurement
         icon: mdi:water-boiler
+        availability: >-
+          {{ has_value('sensor.water_heater_upper_tank_temperature') and
+             has_value('sensor.water_heater_lower_tank_temperature') }}
         state: >-
           {# Estimated gallons of 105F shower water available in tank #}
           {% set cold_inlet = 65.0 %}
