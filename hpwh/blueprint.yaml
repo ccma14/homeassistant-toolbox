@@ -160,6 +160,10 @@ trigger:
     at: !input evening_reset_time
     id: evening_reset
 
+  - trigger: homeassistant
+    event: start
+    id: ha_start
+
 action:
   - choose:
       # =========================================================================
@@ -172,11 +176,13 @@ action:
             value_template: >-
               {{ states(v_lower_sensor) | float(999) < (v_morning_thresh | float) }}
         sequence:
-          # Compute overdrive target (upper + 4°F) to force compressor on
+          # Compute overdrive target (upper + 4°F bounded by cloudy and solar targets)
           - variables:
               target_temp: >-
-                {% set upper = states(v_upper_sensor) | float(120) %}
-                {{ [ [ (upper + 4) | round(0), 125 ] | max, 140 ] | min }}
+                {% set upper = states(v_upper_sensor) | float(v_evening_temp) %}
+                {% set max_temp = v_solar_temp | float(140) %}
+                {% set min_temp = v_cloudy_temp | float(125) %}
+                {{ [ [ (upper + 4) | round(0), min_temp ] | max, max_temp ] | min }}
 
           - action: climate.set_temperature
             target:
@@ -190,11 +196,9 @@ action:
               message: "Morning Boost: Set to {{ target_temp | int }}°F (Lower: {{ states(v_lower_sensor) | int ~ '°F' if is_number(states(v_lower_sensor)) else 'N/A' }})"
               entity_id: !input water_heater
 
-          # Wait until lower tank recovers
-          - wait_for_trigger:
-              - trigger: template
-                value_template: >-
-                  {{ states(v_lower_sensor) | float(0) >= (v_recovery_thresh | float) }}
+          # Wait until lower tank recovers (evaluates immediately if already recovered)
+          - wait_template: >-
+              {{ states(v_lower_sensor) | float(0) >= (v_recovery_thresh | float) }}
             timeout: "02:00:00"
             continue_on_timeout: true
 
@@ -204,11 +208,22 @@ action:
             data:
               temperature: !input evening_target_temperature
 
-          - action: logbook.log
-            data:
-              name: "HPWH Manager"
-              message: "Morning Reset: {{ v_evening_temp | int }}°F (Lower recovered to {{ states(v_lower_sensor) | int ~ '°F' if is_number(states(v_lower_sensor)) else 'N/A' }})"
-              entity_id: !input water_heater
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ wait.completed }}"
+                sequence:
+                  - action: logbook.log
+                    data:
+                      name: "HPWH Manager"
+                      message: "Morning Reset: {{ v_evening_temp | int }}°F (Lower recovered to {{ states(v_lower_sensor) | int ~ '°F' if is_number(states(v_lower_sensor)) else 'N/A' }})"
+                      entity_id: !input water_heater
+            default:
+              - action: logbook.log
+                data:
+                  name: "HPWH Manager"
+                  message: "Morning Timeout: Reset to {{ v_evening_temp | int }}°F (Timed out after 2 hr, lower: {{ states(v_lower_sensor) | int ~ '°F' if is_number(states(v_lower_sensor)) else 'N/A' }})"
+                  entity_id: !input water_heater
 
       # =========================================================================
       # Stage 2: Daytime Solar Boost / Baseline
@@ -264,6 +279,29 @@ action:
             data:
               name: "HPWH Manager"
               message: "Evening Reset: Set to {{ v_evening_temp | int }}°F"
+              entity_id: !input water_heater
+
+      # =========================================================================
+      # Safety Check: Startup recovery if HA restarted during morning overdrive
+      # =========================================================================
+      - conditions:
+          - condition: trigger
+            id: ha_start
+          - condition: template
+            value_template: >-
+              {% set cur_target = state_attr(v_heater, 'temperature') | float(0) %}
+              {% set lower = states(v_lower_sensor) | float(0) %}
+              {{ cur_target > (v_evening_temp | float) and (lower >= (v_recovery_thresh | float) or now().hour >= 7) }}
+        sequence:
+          - action: climate.set_temperature
+            target:
+              entity_id: !input water_heater
+            data:
+              temperature: !input evening_target_temperature
+          - action: logbook.log
+            data:
+              name: "HPWH Manager"
+              message: "Safety Reset on Startup: {{ v_evening_temp | int }}°F (Lower: {{ states(v_lower_sensor) | int ~ '°F' if is_number(states(v_lower_sensor)) else 'N/A' }})"
               entity_id: !input water_heater
 
 mode: restart
