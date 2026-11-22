@@ -24,7 +24,7 @@ jobs:
         run: npm ci
 
       - name: Run ESLint
-        run: npx eslint hpwh/**/*.js
+        run: npx eslint "hpwh/**/*.js"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -53,11 +53,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare mock config
+      - name: Prepare mock config and test installer
         run: |
-          mkdir -p hpwh/tests/mock_config/packages hpwh/tests/mock_config/blueprints/automation/hpwh
-          cp hpwh/hpwh.yaml hpwh/tests/mock_config/packages/hpwh.yaml
+          mkdir -p hpwh/tests/mock_config/blueprints/automation/hpwh
           cp hpwh/blueprint.yaml hpwh/tests/mock_config/blueprints/automation/hpwh/blueprint.yaml
+          bash hpwh/install.sh --local -c hpwh/tests/mock_config
 
       - name: Home Assistant Core check_config
         uses: frenck/action-home-assistant@v1.4.1

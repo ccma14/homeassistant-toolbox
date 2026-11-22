@@ -6,7 +6,7 @@
   "scripts": {
     "test": "./scripts/test.sh",
     "test:hpwh": "./scripts/test.sh hpwh",
-    "lint:js": "eslint hpwh/**/*.js"
+    "lint:js": "eslint \"hpwh/**/*.js\""
   },
   "devDependencies": {
     "eslint": "^10.15.0"

@@ -9,3 +9,40 @@ homeassistant:
   unit_system: us_customary
   time_zone: UTC
   packages: !include_dir_named packages
+
+# Mock entities to satisfy blueprint and package schema validation (T-e)
+climate:
+  - platform: generic_thermostat
+    name: Mock Water Heater
+    heater: input_boolean.mock_heater
+    target_sensor: sensor.water_heater_upper_tank_temperature
+
+input_boolean:
+  mock_heater:
+
+template:
+  - sensor:
+      - name: "Water Heater Lower Tank Temperature"
+        unique_id: mock_lower_tank_temp
+        device_class: temperature
+        unit_of_measurement: "°F"
+        state: "95"
+      - name: "Water Heater Upper Tank Temperature"
+        unique_id: mock_upper_tank_temp
+        device_class: temperature
+        unit_of_measurement: "°F"
+        state: "120"
+      - name: "Solar Forecast Today"
+        unique_id: mock_solar_forecast
+        unit_of_measurement: "kWh"
+        state: "30"
+
+automation:
+  - alias: "Test HPWH Blueprint Automation"
+    use_blueprint:
+      path: hpwh/blueprint.yaml
+      input:
+        water_heater: climate.mock_water_heater
+        lower_tank_sensor: sensor.water_heater_lower_tank_temperature
+        upper_tank_sensor: sensor.water_heater_upper_tank_temperature
+        solar_forecast_sensor: sensor.solar_forecast_today

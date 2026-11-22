@@ -23,3 +23,5 @@ ignore: |
   hpwh/scratch/
   hpwh/tests/mock_config/packages/
   hpwh/tests/mock_config/blueprints/
+  hpwh/tests/mock_config/.storage/
+  hpwh/tests/mock_config/www/

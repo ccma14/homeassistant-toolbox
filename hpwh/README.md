@@ -97,11 +97,19 @@ To install the dashboard card, State of Charge (SoC) gauge, and usable shower me
 If you have the **Advanced SSH & Web Terminal** add-on or terminal access, run this single command inside Home Assistant. It automatically installs the sensor package, downloads the dashboard card, enables `packages:` in `configuration.yaml`, and registers the Lovelace dashboard resource:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/install.sh | bash
 ```
-*(Re-running this command in the future cleanly updates both the card and package to the latest version with zero manual editing).*
 
-After running the installer, reload template entities under **Developer Tools / Tools > YAML > Template Entities**.
+> [!IMPORTANT]
+> **Full Home Assistant Restart Required:**
+> Home Assistant caches packages and `.storage` dashboard resources in memory at boot time. After running the installer, you **must perform a full Home Assistant restart** (**Settings > System > Restart**) for the new package and dashboard card to load.
+
+**What the installer does safely:**
+* **Files Placed:** Downloads `hpwh.yaml` into `/config/packages/` and `hpwh-card.js` into `/config/www/`.
+* **Protects User Customizations:** If you customized entity IDs or tank calibration in `packages/hpwh.yaml`, re-running the installer automatically creates a timestamped backup (`hpwh.yaml.bak-<timestamp>`) before updating.
+* **Safe Configuration:** If `packages:` is not yet configured, backs up `configuration.yaml` to `configuration.yaml.hpwh.bak` and safely inserts package support (or warns if your file uses custom split includes).
+* **Lovelace Registration:** Safely registers `/local/hpwh-card.js` in `.storage/lovelace_resources` without touching or erasing other custom cards.
+* **Uninstall & Dry-Run:** Run with `--dry-run` to preview actions, or `--uninstall` to remove all installed HPWH files and unregister the card resource.
 
 ---
 

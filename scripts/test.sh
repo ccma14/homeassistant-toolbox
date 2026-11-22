@@ -69,27 +69,56 @@ if [ -n "${YAMLLINT_CMD}" ]; then
     FAILED=$((FAILED + 1))
   fi
 else
-  # Lightweight Python fallback check for YAML syntax validity
+  # Python fallback check for YAML syntax validity with custom Home Assistant tags (T-b)
   echo -n "  • python yaml syntax check: "
-  if python3 -c '
+  YAML_STATUS=0
+  PY_OUTPUT=$(python3 - << 'EOF'
 import os, sys
+
 try:
     import yaml
-    for root, _, files in os.walk("."):
-        if "node_modules" in root or ".git" in root: continue
-        for f in files:
-            if f.endswith(".yaml") or f.endswith(".yml"):
-                p = os.path.join(root, f)
+except ImportError:
+    sys.exit(2)
+
+def ignore_unknown_tag(loader, suffix, node):
+    if isinstance(node, yaml.ScalarNode):
+        return loader.construct_scalar(node)
+    elif isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node)
+    elif isinstance(node, yaml.MappingNode):
+        return loader.construct_mapping(node)
+    return None
+
+yaml.SafeLoader.add_multi_constructor('!', ignore_unknown_tag)
+
+errors = []
+for root, _, files in os.walk("."):
+    if any(p in root for p in ["node_modules", ".git", "mock_config/blueprints"]):
+        continue
+    for f in files:
+        if f.endswith(".yaml") or f.endswith(".yml"):
+            p = os.path.join(root, f)
+            try:
                 with open(p, "r", encoding="utf-8") as yf:
                     yaml.safe_load(yf)
-    sys.exit(0)
-except Exception as e:
-    # If pyyaml is not installed, verify basic line structure
-    sys.exit(0)
-' 2>/dev/null; then
-    echo -e "${GREEN}PASS${NC} (basic syntax valid)"
+            except Exception as ex:
+                errors.append(f"{p}: {ex}")
+
+if errors:
+    for err in errors:
+        print(f"Error in {err}", file=sys.stderr)
+    sys.exit(1)
+sys.exit(0)
+EOF
+) || YAML_STATUS=$?
+
+  if [ ${YAML_STATUS} -eq 0 ]; then
+    echo -e "${GREEN}PASS${NC}"
+  elif [ ${YAML_STATUS} -eq 2 ]; then
+    echo -e "${YELLOW}[SKIP]${NC} (pyyaml not installed)"
   else
     echo -e "${RED}FAIL${NC}"
+    echo "${PY_OUTPUT}"
     FAILED=$((FAILED + 1))
   fi
 fi
@@ -104,16 +133,18 @@ else
   FAILED=$((FAILED + 1))
 fi
 
-# 1c. ESLint
+# 1c. ESLint (T-a, T-c)
 if [ -d "node_modules/eslint" ]; then
   echo -n "  • eslint (hpwh-card.js): "
-  if npx eslint hpwh/hpwh-card.js >/dev/null 2>&1; then
+  if npx eslint "hpwh/**/*.js" >/dev/null 2>&1; then
     echo -e "${GREEN}PASS${NC}"
   else
     echo -e "${RED}FAIL${NC}"
-    npx eslint hpwh/hpwh-card.js
+    npx eslint "hpwh/**/*.js"
     FAILED=$((FAILED + 1))
   fi
+else
+  echo -e "  • eslint (hpwh-card.js): ${YELLOW}[SKIP]${NC} (eslint not installed in node_modules)"
 fi
 
 # ------------------------------------------------------------------------------
@@ -149,8 +180,8 @@ if [ "${RUN_HPWH}" = true ]; then
     FAILED=$((FAILED + 1))
   fi
 
-  # Installer tests
-  echo -n "    • test_installer.sh (clean sandbox install & idempotency check): "
+  # Installer tests (T-f)
+  echo -n "    • test_installer.sh (edge cases, download errors, idempotency): "
   if bash hpwh/tests/test_installer.sh >/dev/null 2>&1; then
     echo -e "${GREEN}PASS${NC}"
   else
@@ -168,9 +199,9 @@ echo -e "\n${BLUE}[3/4] Home Assistant Core Validation...${NC}"
 if [ "${RUN_HA_CONTAINER}" = true ]; then
   if command -v docker >/dev/null 2>&1 && docker ps >/dev/null 2>&1; then
     echo "  • Preparing mock config and running 'hass --script check_config' via Colima/Docker..."
-    mkdir -p "${REPO_ROOT}/hpwh/tests/mock_config/packages" "${REPO_ROOT}/hpwh/tests/mock_config/blueprints/automation/hpwh"
-    cp "${REPO_ROOT}/hpwh/hpwh.yaml" "${REPO_ROOT}/hpwh/tests/mock_config/packages/hpwh.yaml"
+    mkdir -p "${REPO_ROOT}/hpwh/tests/mock_config/blueprints/automation/hpwh"
     cp "${REPO_ROOT}/hpwh/blueprint.yaml" "${REPO_ROOT}/hpwh/tests/mock_config/blueprints/automation/hpwh/blueprint.yaml"
+    bash "${REPO_ROOT}/hpwh/install.sh" --local -c "${REPO_ROOT}/hpwh/tests/mock_config" >/dev/null
     if docker run --rm -v "${REPO_ROOT}/hpwh/tests/mock_config:/config:ro" ghcr.io/home-assistant/home-assistant:stable python3 -m homeassistant --config /config --script check_config; then
       echo -e "  • HA Core validation: ${GREEN}PASS${NC}"
     else
