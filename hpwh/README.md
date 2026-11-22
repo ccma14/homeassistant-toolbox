@@ -158,6 +158,8 @@ The card displays an SVG battery dial, shower metrics (minutes or gallons), tank
 ---
 
 ## Safety & System Requirements
+* **Operating Mode (Heat Pump Only Recommended):** The automation works across any operating mode (Heat Pump, Hybrid/Energy Saver, or Electric). However, we strongly recommend setting your water heater to **Heat Pump mode** via your integration (e.g. `esphome-econet`). In Hybrid or Energy Saver modes, a large setpoint jump (such as the 140°F solar boost) may trigger the water heater's internal logic to engage the high-draw electric resistance elements rather than heating efficiently with just the compressor.
+* **Temperature Scale & Units:** All blueprint setpoints, stratification thresholds, and template sensor calculations are calibrated for **Fahrenheit (°F)** and US gallons.
 * **Thermostatic Mixing Valve:** A thermostatic tempering valve installed at the water heater outlet is **strongly recommended** when boosting storage to 140°F. This protects plumbing fixtures and prevents scald risk while giving you the full benefit of thermal energy storage.
 * **Dual Tank Temperature Sensors Required:** Stratification detection and morning assurance rely on having both upper and lower tank temperature measurements.
   * **Rheem EcoNet Water Heaters (Recommended):** The official Home Assistant cloud EcoNet integration only exposes a single aggregated temperature. To expose both built-in sensors, use the open-source [**`esphome-econet`**](https://github.com/esphome-econet/esphome-econet) project, which connects directly to the water heater's internal serial bus to provide 100% local control with discrete upper and lower temperature sensors (`sensor.water_heater_upper_tank_temperature` and `sensor.water_heater_lower_tank_temperature`).
