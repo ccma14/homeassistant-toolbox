@@ -4,6 +4,14 @@
  * License: Apache 2.0
  */
 
+const CARD_VERSION = "1.1.0";
+
+console.info(
+  `%c HPWH-CARD %c v${CARD_VERSION} `,
+  "color: white; background: #0288d1; font-weight: 700; border-radius: 3px 0 0 3px;",
+  "color: #0288d1; background: #e1f5fe; font-weight: 700; border-radius: 0 3px 3px 0;"
+);
+
 class HpwhCard extends HTMLElement {
   constructor() {
     super();
@@ -47,6 +55,14 @@ class HpwhCard extends HTMLElement {
   setConfig(config) {
     if (!config.entity) {
       throw new Error("Please define a water heater climate entity.");
+    }
+    // If entity or automation_entity changed, reset stale logbook & trigger tracking
+    if (this._config && (this._config.entity !== config.entity || this._config.automation_entity !== config.automation_entity)) {
+      this._latestLog = null;
+      this._lastLogFetch = 0;
+      this._prevLastTriggered = null;
+      this._prevTargetTemp = null;
+      this._hasFetchedLogbook = false;
     }
     this._config = {
       title: "♨️ Heat Pump Water Heater",
@@ -167,6 +183,21 @@ class HpwhCard extends HTMLElement {
       composed: true
     });
     this.dispatchEvent(event);
+  }
+
+  _getShowerSensorIds() {
+    return {
+      minutes: this._config?.shower_minutes_sensor || "sensor.water_heater_shower_minutes",
+      gallons: this._config?.shower_gallons_sensor || "sensor.water_heater_shower_gallons"
+    };
+  }
+
+  _getShowerMoreInfoEntity(showMinutes) {
+    const { minutes, gallons } = this._getShowerSensorIds();
+    if (showMinutes) {
+      return this._hass?.states[minutes] ? minutes : (this._config?.soc_sensor || this._config?.entity);
+    }
+    return this._hass?.states[gallons] ? gallons : (this._hass?.states[minutes] ? minutes : (this._config?.soc_sensor || this._config?.entity));
   }
 
   _initDOM() {
@@ -483,17 +514,7 @@ class HpwhCard extends HTMLElement {
           showerClickTimeout = null;
           const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
           const showMinutes = activeUnit !== "gallons";
-
-          const minSensorId = this._config.shower_minutes_sensor || this._config.shower_sensor || "sensor.water_heater_shower_minutes";
-          const galSensorId = this._config.shower_gallons_sensor || "sensor.water_heater_shower_gallons";
-
-          let targetSensor;
-          if (showMinutes) {
-            targetSensor = this._hass?.states[minSensorId] ? minSensorId : (this._hass?.states["sensor.water_heater_shower_buffer"] ? "sensor.water_heater_shower_buffer" : (this._config.soc_sensor || this._config.entity));
-          } else {
-            targetSensor = this._hass?.states[galSensorId] ? galSensorId : (this._hass?.states[minSensorId] ? minSensorId : (this._config.soc_sensor || this._config.entity));
-          }
-          this._fireMoreInfo(targetSensor);
+          this._fireMoreInfo(this._getShowerMoreInfoEntity(showMinutes));
         }, 250);
       }
     });
@@ -613,9 +634,8 @@ class HpwhCard extends HTMLElement {
     const upperEntity = this._config.upper_temp_sensor ? this._hass.states[this._config.upper_temp_sensor] : null;
     const lowerEntity = this._config.lower_temp_sensor ? this._hass.states[this._config.lower_temp_sensor] : null;
     const autoEntity = this._config.automation_entity ? this._hass.states[this._config.automation_entity] : null;
-    const minSensorId = this._config.shower_minutes_sensor || this._config.shower_sensor || "sensor.water_heater_shower_minutes";
-    const galSensorId = this._config.shower_gallons_sensor || "sensor.water_heater_shower_gallons";
-    const minEntity = this._hass.states[minSensorId] || this._hass.states["sensor.water_heater_shower_buffer"] || null;
+    const { minutes: minSensorId, gallons: galSensorId } = this._getShowerSensorIds();
+    const minEntity = this._hass.states[minSensorId] || null;
     const galEntity = this._hass.states[galSensorId] || null;
 
     // Update Title
@@ -756,37 +776,10 @@ class HpwhCard extends HTMLElement {
     let showerValStr = "--";
     let showerTooltip = "Click for history graph, double-click to toggle units";
 
-    let min;
-    let gal;
+    let min = minEntity && !isNaN(parseFloat(minEntity.state)) ? parseFloat(minEntity.state) : undefined;
+    let gal = galEntity && !isNaN(parseFloat(galEntity.state)) ? parseFloat(galEntity.state) : undefined;
 
-    if (minEntity && !isNaN(parseFloat(minEntity.state))) {
-      min = parseFloat(minEntity.state);
-    }
-    if (galEntity && !isNaN(parseFloat(galEntity.state))) {
-      gal = parseFloat(galEntity.state);
-    }
-
-    if (min === undefined && minEntity?.attributes?.usable_minutes !== undefined) {
-      min = parseFloat(minEntity.attributes.usable_minutes);
-    }
-    if (gal === undefined && minEntity?.attributes?.usable_gallons !== undefined) {
-      gal = parseFloat(minEntity.attributes.usable_gallons);
-    }
-    if (min === undefined && galEntity?.attributes?.usable_minutes !== undefined) {
-      min = parseFloat(galEntity.attributes.usable_minutes);
-    }
-    if (gal === undefined && galEntity?.attributes?.usable_gallons !== undefined) {
-      gal = parseFloat(galEntity.attributes.usable_gallons);
-    }
-
-    if (min === undefined && socEntity?.attributes?.usable_shower_minutes_est !== undefined) {
-      min = parseFloat(socEntity.attributes.usable_shower_minutes_est);
-    }
-    if (gal === undefined && socEntity?.attributes?.usable_shower_gallons_est !== undefined) {
-      gal = parseFloat(socEntity.attributes.usable_shower_gallons_est);
-    }
-
-    // Graceful fallback if only one unit is known
+    // Graceful fallback if only one unit sensor is available
     if (min === undefined && gal !== undefined) {
       min = Math.round(gal / 2.0);
     } else if (gal === undefined && min !== undefined) {
