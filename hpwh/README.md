@@ -108,13 +108,17 @@ Packages provide self-contained, drop-in YAML with zero indentation errors or ma
    ```
    *(If using the File Editor UI: create a `packages` folder next to `configuration.yaml`, create `hpwh.yaml` inside it, and paste the file contents).*
    *(When updating in the future, re-running this command replaces the package cleanly with no manual editing).*
-3. Reload template entities under **Developer Tools > YAML > Template Entities** (or **Settings > Developer Tools / Tools > YAML > Template Entities**).
+3. **Customize Entity IDs & Tank Size (if needed):**
+   Open `packages/hpwh.yaml` in your File Editor or Code Server:
+   * **Sensor Entity IDs:** If your water heater sensors differ from `sensor.water_heater_upper_tank_temperature` and `sensor.water_heater_lower_tank_temperature`, use Find & Replace to swap them with your actual entity IDs.
+   * **Tank Capacity & Inlet Temperature:** Under `sensor.water_heater_state_of_charge`, calibrate `tank_cfg` (default `65.0` gal) and `inlet_cfg` (default `65.0`°F, or an entity ID like `'sensor.water_inlet_temperature'`). Downstream shower metrics inherit these automatically.
+4. Reload template entities under **Developer Tools > YAML > Template Entities** (or **Settings > Tools > YAML > Template Entities**).
 
 #### Option B: Manual Include via `templates.yaml` / `configuration.yaml`
 If your `configuration.yaml` uses `template: !include templates.yaml`, paste the contents of [`templates.yaml`](templates.yaml) starting from the `- sensor:` line.
 
 #### Reloading:
-Navigate to **Developer Tools > YAML** (or **Settings > Developer Tools / Tools > YAML**) and click **Template Entities**. The sensors (`sensor.water_heater_state_of_charge`, `sensor.water_heater_shower_gallons`, `sensor.water_heater_shower_minutes`) will activate immediately without restarting Home Assistant.
+Navigate to **Developer Tools > YAML** (or **Settings > Tools > YAML**) and click **Template Entities**. The sensors (`sensor.water_heater_state_of_charge`, `sensor.water_heater_shower_gallons`, `sensor.water_heater_shower_minutes`) will activate immediately without restarting Home Assistant.
 
 ---
 
