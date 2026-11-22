@@ -8,6 +8,10 @@ blueprint:
     * **Evening Reset:** Drops setpoint to baseline (e.g. 120°F) to prevent the compressor from cycling overnight on home battery storage or grid power.
     * **Native Logging:** Automatically logs all setpoint changes and temperature triggers directly to Home Assistant's Logbook.
   domain: automation
+  author: "ccma14"
+  source_url: "https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/blueprint.yaml"
+  homeassistant:
+    min_version: "2024.10.0"
   input:
     water_heater:
       name: "Water Heater Climate Entity"
@@ -150,7 +154,7 @@ variables:
   v_solar_time: !input solar_soak_time
   v_evening_time: !input evening_reset_time
 
-trigger:
+triggers:
   - trigger: time
     at: !input morning_boost_time
     id: morning_boost
@@ -171,7 +175,7 @@ trigger:
     event_type: automation_reloaded
     id: ha_restart
 
-action:
+actions:
   - choose:
       # =========================================================================
       # Stage 1: Morning Assurance
