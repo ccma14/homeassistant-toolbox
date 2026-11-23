@@ -179,16 +179,6 @@ if [ "${RUN_HPWH}" = true ]; then
     python3 hpwh/tests/test_templates.py
     FAILED=$((FAILED + 1))
   fi
-
-  # Installer tests (T-f)
-  echo -n "    • test_installer.sh (edge cases, download errors, idempotency): "
-  if bash hpwh/tests/test_installer.sh >/dev/null 2>&1; then
-    echo -e "${GREEN}PASS${NC}"
-  else
-    echo -e "${RED}FAIL${NC}"
-    bash hpwh/tests/test_installer.sh
-    FAILED=$((FAILED + 1))
-  fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -201,9 +191,10 @@ if [ "${RUN_HA_CONTAINER}" = true ]; then
     echo "  • Preparing mock config and running 'hass --script check_config' via Colima/Docker..."
     TMP_HA_CONFIG="$(mktemp -d "${REPO_ROOT}/hpwh/tests/.tmp_mock_config_XXXXXX")"
     cp -r "${REPO_ROOT}/hpwh/tests/mock_config/." "${TMP_HA_CONFIG}/"
+    mkdir -p "${TMP_HA_CONFIG}/packages"
+    cp "${REPO_ROOT}/hpwh/hpwh.yaml" "${TMP_HA_CONFIG}/packages/hpwh.yaml"
     mkdir -p "${TMP_HA_CONFIG}/blueprints/automation/hpwh"
     cp "${REPO_ROOT}/hpwh/blueprint.yaml" "${TMP_HA_CONFIG}/blueprints/automation/hpwh/blueprint.yaml"
-    bash "${REPO_ROOT}/hpwh/install.sh" --local --yes -c "${TMP_HA_CONFIG}" >/dev/null
     if docker run --rm -v "${TMP_HA_CONFIG}:/config:ro" ghcr.io/home-assistant/home-assistant:stable python3 -m homeassistant --config /config --script check_config; then
       echo -e "  • HA Core validation: ${GREEN}PASS${NC}"
     else

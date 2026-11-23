@@ -43,9 +43,6 @@ jobs:
       - name: Run component template tests (hpwh)
         run: python3 hpwh/tests/test_templates.py
 
-      - name: Run component installer tests (hpwh)
-        run: bash hpwh/tests/test_installer.sh
-
   ha-validation:
     name: Home Assistant Config & Blueprint Validation
     runs-on: ubuntu-latest
@@ -53,11 +50,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare mock config and test installer
+      - name: Prepare mock config with package and blueprint
         run: |
+          mkdir -p hpwh/tests/mock_config/packages
+          cp hpwh/hpwh.yaml hpwh/tests/mock_config/packages/hpwh.yaml
           mkdir -p hpwh/tests/mock_config/blueprints/automation/hpwh
           cp hpwh/blueprint.yaml hpwh/tests/mock_config/blueprints/automation/hpwh/blueprint.yaml
-          bash hpwh/install.sh --local --yes -c hpwh/tests/mock_config
 
       - name: Home Assistant Core check_config
         uses: frenck/action-home-assistant@v1.4.1

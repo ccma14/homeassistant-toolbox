@@ -89,38 +89,12 @@ Then reload blueprints under **Developer Tools > YAML > Automations** (or **Sett
   <img src="images/hpwh.png" width="400" alt="Heat Pump Water Heater Dashboard Card">
 </p>
 
-To install the dashboard card, State of Charge (SoC) gauge, and usable shower metrics (minutes/gallons), choose either the **1-Line Installer** (recommended) or **Manual File Placement**.
-
----
-
-### Option A: 1-Line Installer
-If you have the **Advanced SSH & Web Terminal** add-on or terminal access, run this command inside Home Assistant. It detects your configured packages directory, installs the sensor package and dashboard card, enables `packages:` in `configuration.yaml` if needed, and registers the Lovelace dashboard resource:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/install.sh | bash
-```
-*(Tip: pass `--dry-run` to preview actions without writing files, e.g. `... | bash -s -- --dry-run`)*
-
-> [!IMPORTANT]
-> **Full Home Assistant Restart Required:**
-> Home Assistant caches packages and `.storage` dashboard resources in memory at boot time. After running the installer, you **must perform a full Home Assistant restart** (**Settings > System > Restart**) before adding the card to your dashboard.
-
-**What the installer does safely:**
-* **Auto-Detects Packages Directory:** Inspects `configuration.yaml` to detect your configured packages directory (defaulting to `packages/`, or custom paths like `integrations/`).
-* **Protects User Customizations:** If you customized entity IDs or tank calibration in `hpwh.yaml`, subsequent installer runs preserve your local changes and save the latest upstream file to `hpwh.yaml.upstream-<timestamp>`. Use `--force` if you want to overwrite your local edits.
-* **Safe Configuration Handling:** If `packages:` is not yet configured, backs up `configuration.yaml` to `configuration.yaml.hpwh.bak` and safely inserts package support. If your configuration uses custom split includes (`!include`) or non-standard indentation, the installer refrains from touching `configuration.yaml`, prints a clear `INCOMPLETE` notice with manual instructions, and exits with code 2.
-* **Lovelace Registration:** Safely registers `/local/hpwh-card.js` in `.storage/lovelace_resources` without touching or erasing other custom cards.
-* **Uninstall & Dry-Run:** Run with `--dry-run` to preview actions, or `--uninstall` to safely remove all installed HPWH files and unregister the card resource.
-
----
-
-### Option B: Manual File Placement (File Editor / No Terminal)
-If you do not have terminal access or prefer placing files manually:
+To install the dashboard card, State of Charge (SoC) gauge, and usable shower metrics (minutes/gallons), follow the steps below:
 
 > [!TIP]
 > **Configuration Directory Paths:** In Home Assistant OS (e.g. inside the **File Editor** or **Studio Code Server** add-ons), the configuration root directory is displayed as `/homeassistant/`. In container/core installations or SSH terminals, it is traditionally `/config/`. Both refer to the same folder where `configuration.yaml` resides.
 
-#### 1. Install the Sensor Package
+### Step 1: Install the Sensor Package
 Packages provide self-contained, drop-in YAML with zero indentation errors or manual editing of `configuration.yaml`.
 
 1. Ensure packages are enabled in your `configuration.yaml` (add under `homeassistant:` if not already present):
@@ -128,19 +102,19 @@ Packages provide self-contained, drop-in YAML with zero indentation errors or ma
    homeassistant:
      packages: !include_dir_named packages
    ```
-2. Download or place [`hpwh.yaml`](hpwh.yaml) into your `packages/` folder (e.g. `/config/packages/hpwh.yaml` or `/homeassistant/packages/hpwh.yaml`):
+2. Download or copy [`hpwh.yaml`](hpwh.yaml) into your `packages/` folder (e.g. `/config/packages/hpwh.yaml` or `/homeassistant/packages/hpwh.yaml`):
    ```bash
    wget -O /config/packages/hpwh.yaml https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh.yaml
    ```
    *(If using the File Editor UI: create a `packages` folder next to `configuration.yaml`, create `hpwh.yaml` inside it, and paste the file contents).*
 3. **Customize Entity IDs & Tank Size (if needed):**
-   Open `packages/hpwh.yaml` in your File Editor or Code Server:
+   Open `packages/hpwh.yaml`:
    * **Sensor Entity IDs:** If your water heater sensors differ from `sensor.water_heater_upper_tank_temperature` and `sensor.water_heater_lower_tank_temperature`, use Find & Replace to swap them with your actual entity IDs.
-   * **Tank Capacity & Inlet Temperature:** Under `sensor.water_heater_state_of_charge`, calibrate `tank_cfg` (default `65.0` gal) and `inlet_cfg` (default `65.0`°F, or an entity ID like `'sensor.water_inlet_temperature'`). Downstream shower metrics inherit these automatically.
-4. Reload template entities under **Developer Tools / Tools > YAML > Template Entities**.
+   * **Inlet Temperature & Tank Capacity:** Under `sensor.water_heater_inlet_temperature`, adjust `inlet_cfg` (default `65.0`°F, or an entity ID like `'sensor.water_inlet_temperature'`). Under `sensor.water_heater_state_of_charge`, adjust `tank_cfg` (default `65.0` gal). Downstream shower metrics inherit these automatically.
+4. Reload template entities under **Developer Tools / Tools > YAML > Template Entities** (or restart Home Assistant).
 
-#### 2. Install the Dashboard Card
-1. Download [`hpwh-card.js`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js) into your `www/` directory (e.g. `/config/www/hpwh-card.js` or `/homeassistant/www/hpwh-card.js`):
+### Step 2: Install the Dashboard Card
+1. Download [`hpwh-card.js`](hpwh-card.js) into your `www/` directory (e.g. `/config/www/hpwh-card.js` or `/homeassistant/www/hpwh-card.js`):
    ```bash
    wget -O /config/www/hpwh-card.js https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js
    ```
@@ -159,7 +133,6 @@ Packages provide self-contained, drop-in YAML with zero indentation errors or ma
 
 ### Step 3: Add the Card to Your Dashboard
 
-Once installed (via either Option A or Option B):
 1. Open your dashboard and click **Edit Dashboard** $\rightarrow$ **+ Add Card**.
 2. Search for **Heat Pump Water Heater Card** (or select it from the card picker).
 3. Select your entities in the card editor (**Water Heater**, **Power Sensor**, **SoC Sensor**, **Tank Temperatures**).
