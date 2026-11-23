@@ -199,15 +199,18 @@ echo -e "\n${BLUE}[3/4] Home Assistant Core Validation...${NC}"
 if [ "${RUN_HA_CONTAINER}" = true ]; then
   if command -v docker >/dev/null 2>&1 && docker ps >/dev/null 2>&1; then
     echo "  • Preparing mock config and running 'hass --script check_config' via Colima/Docker..."
-    mkdir -p "${REPO_ROOT}/hpwh/tests/mock_config/blueprints/automation/hpwh"
-    cp "${REPO_ROOT}/hpwh/blueprint.yaml" "${REPO_ROOT}/hpwh/tests/mock_config/blueprints/automation/hpwh/blueprint.yaml"
-    bash "${REPO_ROOT}/hpwh/install.sh" --local --yes -c "${REPO_ROOT}/hpwh/tests/mock_config" >/dev/null
-    if docker run --rm -v "${REPO_ROOT}/hpwh/tests/mock_config:/config:ro" ghcr.io/home-assistant/home-assistant:stable python3 -m homeassistant --config /config --script check_config; then
+    TMP_HA_CONFIG="$(mktemp -d "${REPO_ROOT}/hpwh/tests/.tmp_mock_config_XXXXXX")"
+    cp -r "${REPO_ROOT}/hpwh/tests/mock_config/." "${TMP_HA_CONFIG}/"
+    mkdir -p "${TMP_HA_CONFIG}/blueprints/automation/hpwh"
+    cp "${REPO_ROOT}/hpwh/blueprint.yaml" "${TMP_HA_CONFIG}/blueprints/automation/hpwh/blueprint.yaml"
+    bash "${REPO_ROOT}/hpwh/install.sh" --local --yes -c "${TMP_HA_CONFIG}" >/dev/null
+    if docker run --rm -v "${TMP_HA_CONFIG}:/config:ro" ghcr.io/home-assistant/home-assistant:stable python3 -m homeassistant --config /config --script check_config; then
       echo -e "  • HA Core validation: ${GREEN}PASS${NC}"
     else
       echo -e "  • HA Core validation: ${RED}FAIL${NC}"
       FAILED=$((FAILED + 1))
     fi
+    rm -rf "${TMP_HA_CONFIG}"
   else
     echo -e "  ${YELLOW}Docker/Colima is not running. Start it with 'colima start' to run HA container checks.${NC}"
   fi

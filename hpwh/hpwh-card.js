@@ -19,6 +19,11 @@ class HpwhCard extends HTMLElement {
     this._initialized = false;
     this._elements = {};
     this._displayUnit = null;
+    try {
+      this._displayUnit = window.localStorage ? window.localStorage.getItem("hpwh_card_display_unit") : null;
+    } catch {
+      this._displayUnit = null;
+    }
     this._latestLog = null;
     this._lastLogFetch = 0;
     this._prevLastTriggered = null;
@@ -626,6 +631,7 @@ class HpwhCard extends HTMLElement {
         showerClickTimeout = null;
         const activeUnit = this._displayUnit || this._config.shower_display || "minutes";
         this._displayUnit = activeUnit === "minutes" ? "gallons" : "minutes";
+        try { if (window.localStorage) { window.localStorage.setItem("hpwh_card_display_unit", this._displayUnit); } } catch { /* ignore */ }
         this._updateContent();
       } else {
         showerClickTimeout = setTimeout(() => {
@@ -843,10 +849,12 @@ class HpwhCard extends HTMLElement {
       socText = `${displaySoc}%`;
 
       // Check for solar boost surplus
-      if (socEntity.attributes && socEntity.attributes.solar_boost !== undefined) {
-        boostVal = Math.round(parseFloat(socEntity.attributes.solar_boost));
-      } else if (socEntity.attributes && socEntity.attributes.raw_soc !== undefined) {
-        boostVal = Math.max(Math.round(parseFloat(socEntity.attributes.raw_soc) - 100), 0);
+      const rawBoost = parseFloat(socEntity.attributes?.solar_boost);
+      const rawSocAttr = parseFloat(socEntity.attributes?.raw_soc);
+      if (!isNaN(rawBoost)) {
+        boostVal = Math.round(rawBoost);
+      } else if (!isNaN(rawSocAttr)) {
+        boostVal = Math.max(Math.round(rawSocAttr - 100), 0);
       } else if (socVal > 100) {
         boostVal = Math.round(socVal - 100);
       }

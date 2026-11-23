@@ -25,7 +25,7 @@ homeassistant-toolbox/
 └── <project_folder>/       # e.g., hpwh/
     ├── README.md           # Problem statement, theory, and setup instructions
     ├── blueprint.yaml      # Home Assistant automation blueprint
-    ├── templates.yaml      # Jinja template sensors
+    ├── <project>.yaml      # Home Assistant sensor package
     └── <project>-card.js   # Lovelace dashboard card
 ```
 

@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
 """
-Test suite for HPWH template sensors (hpwh/hpwh.yaml & hpwh/templates.yaml).
-Tests mathematical formulas and renders the actual Jinja2 templates from hpwh.yaml
-with Home Assistant mock environment stubs.
+Test suite for HPWH template sensors (hpwh/hpwh.yaml).
+Tests mathematical formulas, verifies single-source calibration,
+and renders Jinja2 templates with Home Assistant mock environment stubs.
 """
 
 import os
 import re
 import unittest
-
-try:
-    import yaml
-    HAS_YAML = True
-except ImportError:
-    HAS_YAML = False
 
 try:
     import jinja2
@@ -23,7 +17,6 @@ except ImportError:
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 HPWH_YAML_PATH = os.path.join(REPO_ROOT, "hpwh/hpwh.yaml")
-TEMPLATES_YAML_PATH = os.path.join(REPO_ROOT, "hpwh/templates.yaml")
 
 
 def compute_hpwh_metrics(upper: float, lower: float, cold_inlet: float = 65.0,
@@ -84,9 +77,16 @@ def make_ha_jinja_env(states_map=None, attrs_map=None):
 
 
 class TestHpwhTemplates(unittest.TestCase):
-    def test_package_files_exist(self):
+    def test_package_file_exists(self):
         self.assertTrue(os.path.isfile(HPWH_YAML_PATH), "hpwh/hpwh.yaml must exist")
-        self.assertTrue(os.path.isfile(TEMPLATES_YAML_PATH), "hpwh/templates.yaml must exist")
+
+    def test_single_inlet_cfg_definition(self):
+        """Ensure inlet_cfg calibration is defined in exactly one place (A3)"""
+        with open(HPWH_YAML_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        matches = re.findall(r"\{%\s*set\s+inlet_cfg\s*=", content)
+        self.assertEqual(len(matches), 1, f"inlet_cfg must be defined exactly once in hpwh.yaml, found {len(matches)}")
 
     def test_availability_guards_present(self):
         """Ensure all sensors have availability blocks to prevent false 100% readings when offline"""
@@ -155,30 +155,45 @@ class TestHpwhTemplates(unittest.TestCase):
         with open(HPWH_YAML_PATH, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Extract SoC state template
+        # Extract templates
+        m_inlet = re.search(r"unique_id: water_heater_inlet_temperature[\s\S]*?state: >-\s*([\s\S]*?)\n\s+- name:", content)
+        self.assertIsNotNone(m_inlet)
+        inlet_tmpl_str = m_inlet.group(1)
+
         m_soc = re.search(r"unique_id: water_heater_state_of_charge[\s\S]*?state: >-\s*([\s\S]*?)\n\s+attributes:", content)
-        self.assertIsNotNone(m_soc, "Could not extract SoC state template from hpwh.yaml")
+        self.assertIsNotNone(m_soc)
         soc_tmpl_str = m_soc.group(1)
 
-        # Extract shower gallons state template
         m_gal = re.search(r"unique_id: water_heater_shower_gallons[\s\S]*?state: >-\s*([\s\S]*?)\n\s+attributes:", content)
-        self.assertIsNotNone(m_gal, "Could not extract shower gallons state template from hpwh.yaml")
+        self.assertIsNotNone(m_gal)
         gal_tmpl_str = m_gal.group(1)
+
+        m_min = re.search(r"unique_id: water_heater_shower_minutes[\s\S]*?state: >-\s*([\s\S]*?)\n\s+attributes:", content)
+        self.assertIsNotNone(m_min)
+        min_tmpl_str = m_min.group(1)
+
+        m_boost = re.search(r"solar_boost: >-\s*([\s\S]*?)\n\s+raw_soc:", content)
+        self.assertIsNotNone(m_boost)
+        boost_tmpl_str = m_boost.group(1)
 
         # Test case 1: Nominal full tank (120°F upper, 120°F lower)
         env = make_ha_jinja_env(
             states_map={
+                "sensor.water_heater_inlet_temperature": 65.0,
                 "sensor.water_heater_upper_tank_temperature": 120.0,
                 "sensor.water_heater_lower_tank_temperature": 120.0,
+                "sensor.water_heater_shower_gallons": 89,
             },
             attrs_map={
                 "sensor.water_heater_state_of_charge": {
-                    "cold_inlet_temperature": 65.0,
                     "tank_gallons": 65.0,
                     "target_baseline_temperature": 120.0,
                 }
             }
         )
+
+        res_inlet = env.from_string(inlet_tmpl_str).render().strip()
+        self.assertEqual(float(res_inlet), 65.0)
 
         res_soc = env.from_string(soc_tmpl_str).render().strip()
         self.assertEqual(int(res_soc), 100)
@@ -186,25 +201,11 @@ class TestHpwhTemplates(unittest.TestCase):
         res_gal = env.from_string(gal_tmpl_str).render().strip()
         self.assertEqual(int(res_gal), 89)
 
-        # Test case 2: Stratified tank (110°F upper, 65°F lower)
-        env_strat = make_ha_jinja_env(
-            states_map={
-                "sensor.water_heater_upper_tank_temperature": 110.0,
-                "sensor.water_heater_lower_tank_temperature": 65.0,
-            },
-            attrs_map={
-                "sensor.water_heater_state_of_charge": {
-                    "cold_inlet_temperature": 65.0,
-                    "tank_gallons": 65.0,
-                    "target_baseline_temperature": 120.0,
-                }
-            }
-        )
-        res_soc_strat = env_strat.from_string(soc_tmpl_str).render().strip()
-        self.assertEqual(int(res_soc_strat), 33)
+        res_min = env.from_string(min_tmpl_str).render().strip()
+        self.assertEqual(int(res_min), 44)
 
-        res_gal_strat = env_strat.from_string(gal_tmpl_str).render().strip()
-        self.assertEqual(int(res_gal_strat), 29)
+        res_boost = env.from_string(boost_tmpl_str).render().strip()
+        self.assertEqual(int(res_boost), 0)
 
 
 if __name__ == "__main__":

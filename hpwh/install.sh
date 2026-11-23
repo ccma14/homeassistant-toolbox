@@ -28,6 +28,12 @@ DRY_RUN=false
 UNINSTALL=false
 CONFIRM_YES=false
 
+CONFIG_BACKUP_CREATED_THIS_RUN=false
+PREV_PACKAGE_EXISTS=false
+PREV_PACKAGE_SNAPSHOT=""
+PREV_STORAGE_EXISTS=false
+PREV_STORAGE_SNAPSHOT=""
+
 # Temporary files tracked for cleanup
 TMP_FILES=()
 cleanup() {
@@ -352,7 +358,7 @@ if [[ "${UNINSTALL}" = true ]]; then
   echo "  Target: ${CONFIG_DIR}"
   echo "=========================================================="
 
-  if [[ "${CONFIRM_YES}" != true && -t 0 && -t 1 && -r /dev/tty ]]; then
+  if [[ "${CONFIRM_YES}" != true && -t 1 && -r /dev/tty ]] && { true </dev/tty; } 2>/dev/null; then
     read -r -p "Are you sure you want to uninstall HPWH files and unregister dashboard resource? [y/N] " response </dev/tty
     case "$response" in
       [yY][eE][sS]|[yY]) ;;
@@ -422,7 +428,7 @@ if [[ "${DRY_RUN}" = true ]]; then
 fi
 echo "=========================================================="
 
-if [[ "${CONFIRM_YES}" != true && "${DRY_RUN}" != true && -t 0 && -t 1 && -r /dev/tty ]]; then
+if [[ "${CONFIRM_YES}" != true && "${DRY_RUN}" != true && -t 1 && -r /dev/tty ]] && { true </dev/tty; } 2>/dev/null; then
   read -r -p "Proceed with installation? [y/N] " response </dev/tty
   case "$response" in
     [yY][eE][sS]|[yY]) ;;
@@ -488,6 +494,11 @@ else
   HASH_FILE="${PACKAGES_DIR}/.hpwh_installed.sha256"
 
   if [[ -f "${TARGET_PKG}" ]]; then
+    PREV_PACKAGE_EXISTS=true
+    PREV_PACKAGE_SNAPSHOT="$(mktemp "${CONFIG_DIR}/.hpwh_pkg_prev_XXXXXX")"
+    TMP_FILES+=("${PREV_PACKAGE_SNAPSHOT}")
+    cp -p "${TARGET_PKG}" "${PREV_PACKAGE_SNAPSHOT}"
+
     CURRENT_SHA=$(python3 -c "import hashlib; print(hashlib.sha256(open('${TARGET_PKG}', 'rb').read()).hexdigest())")
     NEW_SHA=$(python3 -c "import hashlib; print(hashlib.sha256(open('${STAGED_PKG}', 'rb').read()).hexdigest())")
 
@@ -570,6 +581,7 @@ else
   else
     BACKUP_CONFIG="${CONFIG_FILE}.hpwh.bak"
     cp -p "${CONFIG_FILE}" "${BACKUP_CONFIG}"
+    CONFIG_BACKUP_CREATED_THIS_RUN=true
     echo "  ℹ Backed up original configuration to ${BACKUP_CONFIG}"
 
     # Pure Python insertion preserving CRLF/LF line endings (R2)
@@ -635,6 +647,12 @@ elif [[ "${DRY_RUN}" = true ]]; then
   echo "▶ [DRY-RUN] Would register /local/hpwh-card.js?v=${CARD_VERSION} in ${STORAGE_DIR}/lovelace_resources"
 else
   mkdir -p "${STORAGE_DIR}"
+  if [[ -f "${STORAGE_FILE}" ]]; then
+    PREV_STORAGE_EXISTS=true
+    PREV_STORAGE_SNAPSHOT="$(mktemp "${CONFIG_DIR}/.hpwh_res_prev_XXXXXX")"
+    TMP_FILES+=("${PREV_STORAGE_SNAPSHOT}")
+    cp -p "${STORAGE_FILE}" "${PREV_STORAGE_SNAPSHOT}"
+  fi
   STORAGE_DIR="${STORAGE_DIR}" CARD_VERSION="${CARD_VERSION}" python3 - << 'EOF'
 import os, sys, json, uuid
 
@@ -692,8 +710,19 @@ if command -v ha >/dev/null 2>&1 && [[ "${DRY_RUN}" != true ]]; then
   echo "▶ Validating configuration with Home Assistant Core..."
   if ! ha core check >/dev/null 2>&1; then
     echo "❌ Error: Home Assistant config check failed. Rolling back changes..."
-    if [[ -f "${CONFIG_FILE}.hpwh.bak" ]]; then
-      cp -p "${CONFIG_FILE}.hpwh.bak" "${CONFIG_FILE}"
+    if [[ "${CONFIG_BACKUP_CREATED_THIS_RUN}" == true && -f "${BACKUP_CONFIG}" ]]; then
+      cp -p "${BACKUP_CONFIG}" "${CONFIG_FILE}"
+      rm -f "${BACKUP_CONFIG}"
+    fi
+    if [[ "${PREV_PACKAGE_EXISTS}" == true && -f "${PREV_PACKAGE_SNAPSHOT}" ]]; then
+      cp -p "${PREV_PACKAGE_SNAPSHOT}" "${TARGET_PKG}"
+    elif [[ "${PREV_PACKAGE_EXISTS}" == false ]]; then
+      rm -f "${TARGET_PKG}" "${PACKAGES_DIR}/.hpwh_installed.sha256"
+    fi
+    if [[ "${PREV_STORAGE_EXISTS}" == true && -f "${PREV_STORAGE_SNAPSHOT}" ]]; then
+      cp -p "${PREV_STORAGE_SNAPSHOT}" "${STORAGE_FILE}"
+    elif [[ "${PREV_STORAGE_EXISTS}" == false && -f "${STORAGE_FILE}" ]]; then
+      rm -f "${STORAGE_FILE}"
     fi
     exit 1
   fi

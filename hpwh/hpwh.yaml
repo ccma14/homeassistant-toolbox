@@ -8,22 +8,31 @@
 # (Ensure 'homeassistant: packages: !include_dir_named packages' is in your configuration.yaml)
 #
 # Configuration:
-# To customize parameters, adjust the settings below in 'sensor.water_heater_state_of_charge':
-#   - inlet_cfg: Enter a fixed cold water temp in °F (e.g. 65.0) OR an entity ID
+# To customize parameters, adjust the settings below:
+#   - inlet_cfg (in 'sensor.water_heater_inlet_temperature'):
+#     Enter a fixed cold water temp in °F (default: 65.0) OR an entity ID
 #     (e.g. 'sensor.water_inlet_temperature' or 'sensor.ground_temperature')
-#   - tank_cfg: Total tank capacity in gallons (default: 65.0) OR an entity ID
-#   - target_baseline: Baseline setpoint for 100% nominal SoC (default: 120.0°F)
+#   - tank_cfg (in 'sensor.water_heater_state_of_charge' attributes):
+#     Total tank capacity in gallons (default: 65.0) OR an entity ID
 #
 # If your tank sensor entity IDs differ, use Find & Replace:
 #   - sensor.water_heater_upper_tank_temperature
 #   - sensor.water_heater_lower_tank_temperature
-#
-# Note: Downstream sensors ('shower_gallons', 'shower_minutes', 'solar_boost', and 'raw_soc')
-# automatically inherit inlet temperature and tank volume from the State of Charge sensor.
 # ==============================================================================
 
 template:
   - sensor:
+      - name: "Water Heater Inlet Temperature"
+        unique_id: water_heater_inlet_temperature
+        unit_of_measurement: "°F"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:thermometer-water
+        state: >-
+          {# --- Calibration: Enter fixed °F (default: 65.0) OR an entity ID --- #}
+          {% set inlet_cfg = 65.0 %}
+          {{ states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) }}
+
       - name: "Water Heater State of Charge"
         unique_id: water_heater_state_of_charge
         unit_of_measurement: "%"
@@ -33,9 +42,7 @@ template:
           {{ has_value('sensor.water_heater_upper_tank_temperature') and
              has_value('sensor.water_heater_lower_tank_temperature') }}
         state: >-
-          {# --- Calibration Parameters (Configure once here and in attributes below) --- #}
-          {% set inlet_cfg = 65.0 %}
-          {% set cold_inlet = states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) %}
+          {% set cold_inlet = states('sensor.water_heater_inlet_temperature') | float(65.0) %}
           {% set target_baseline = 120.0 %}
 
           {# Current sensor readings #}
@@ -51,22 +58,22 @@ template:
 
         attributes:
           cold_inlet_temperature: >-
-            {% set inlet_cfg = 65.0 %}
-            {{ states(inlet_cfg) | float(65.0) if inlet_cfg is string and has_value(inlet_cfg) else (inlet_cfg | float(65.0)) }}
+            {{ states('sensor.water_heater_inlet_temperature') | float(65.0) }}
           tank_gallons: >-
             {% set tank_cfg = 65.0 %}
             {{ states(tank_cfg) | float(65.0) if tank_cfg is string and has_value(tank_cfg) else (tank_cfg | float(65.0)) }}
           target_baseline_temperature: 120.0
           solar_boost: >-
             {# Thermal energy surplus above 100% capacity (0% to ~36% during 140F solar boost) #}
-            {% set raw = state_attr('sensor.water_heater_state_of_charge', 'raw_soc') %}
-            {% if is_number(raw) %}
-              {{ [ (raw | float - 100) | round(0), 0 ] | max }}
-            {% else %}
-              0
-            {% endif %}
+            {% set cold_inlet = states('sensor.water_heater_inlet_temperature') | float(65.0) %}
+            {% set target_baseline = 120.0 %}
+            {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
+            {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
+            {% set avg_temp = (upper * 0.4) + (lower * 0.6) %}
+            {% set raw_soc = ((avg_temp - cold_inlet) / (target_baseline - cold_inlet)) * 100 %}
+            {{ [ (raw_soc - 100) | round(0), 0 ] | max }}
           raw_soc: >-
-            {% set cold_inlet = state_attr('sensor.water_heater_state_of_charge', 'cold_inlet_temperature') | float(65.0) %}
+            {% set cold_inlet = states('sensor.water_heater_inlet_temperature') | float(65.0) %}
             {% set target_baseline = 120.0 %}
             {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(target_baseline) %}
             {% set lower = states('sensor.water_heater_lower_tank_temperature') | float(target_baseline) %}
@@ -106,7 +113,7 @@ template:
              has_value('sensor.water_heater_lower_tank_temperature') }}
         state: >-
           {# Estimated gallons of 105F shower water available in tank #}
-          {% set cold_inlet = state_attr('sensor.water_heater_state_of_charge', 'cold_inlet_temperature') | float(65.0) %}
+          {% set cold_inlet = states('sensor.water_heater_inlet_temperature') | float(65.0) %}
           {% set tank_gallons = state_attr('sensor.water_heater_state_of_charge', 'tank_gallons') | float(65.0) %}
           {% set shower_temp = 105.0 %}
           {% set upper = states('sensor.water_heater_upper_tank_temperature') | float(120) %}
@@ -122,7 +129,7 @@ template:
         attributes:
           delivery_temperature: 105.0
           cold_inlet_temperature: >-
-            {{ state_attr('sensor.water_heater_state_of_charge', 'cold_inlet_temperature') | float(65.0) }}
+            {{ states('sensor.water_heater_inlet_temperature') | float(65.0) }}
           tank_gallons: >-
             {{ state_attr('sensor.water_heater_state_of_charge', 'tank_gallons') | float(65.0) }}
 

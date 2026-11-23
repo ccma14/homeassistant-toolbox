@@ -41,7 +41,7 @@ Using the tank as a thermal battery works well, but evening water draws (such as
 | File | Type | Description |
 | :--- | :--- | :--- |
 | [`blueprint.yaml`](blueprint.yaml) | **Automation Blueprint** | Daily schedule and stratification manager. |
-| [`hpwh.yaml`](hpwh.yaml) / [`templates.yaml`](templates.yaml) | *Sensors (Package or Templates)* | Template sensors for State of Charge (0–100% + solar boost), shower minutes, and gallons. |
+| [`hpwh.yaml`](hpwh.yaml) | *Sensors Package* | Template sensors for State of Charge (0–100% + solar boost), shower minutes, and gallons. |
 | [`hpwh-card.js`](hpwh-card.js) | *Custom UI Card* | Lovelace card with battery gauge, metrics, and card editor. |
 
 ---
@@ -138,8 +138,6 @@ Packages provide self-contained, drop-in YAML with zero indentation errors or ma
    * **Sensor Entity IDs:** If your water heater sensors differ from `sensor.water_heater_upper_tank_temperature` and `sensor.water_heater_lower_tank_temperature`, use Find & Replace to swap them with your actual entity IDs.
    * **Tank Capacity & Inlet Temperature:** Under `sensor.water_heater_state_of_charge`, calibrate `tank_cfg` (default `65.0` gal) and `inlet_cfg` (default `65.0`°F, or an entity ID like `'sensor.water_inlet_temperature'`). Downstream shower metrics inherit these automatically.
 4. Reload template entities under **Developer Tools / Tools > YAML > Template Entities**.
-
-*(Alternative for `templates.yaml`: If your `configuration.yaml` uses `template: !include templates.yaml`, paste the contents of [`templates.yaml`](templates.yaml) starting from the `- sensor:` line).*
 
 #### 2. Install the Dashboard Card
 1. Download [`hpwh-card.js`](https://raw.githubusercontent.com/ccma14/homeassistant-toolbox/main/hpwh/hpwh-card.js) into your `www/` directory (e.g. `/config/www/hpwh-card.js` or `/homeassistant/www/hpwh-card.js`):

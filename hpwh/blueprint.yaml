@@ -190,7 +190,7 @@ actions:
                     id: morning_boost
                   - condition: template
                     value_template: >-
-                      {{ states(v_lower_sensor) | float(999) < (v_morning_thresh | float) }}
+                      {{ has_value(v_lower_sensor) and has_value(v_upper_sensor) and (states(v_lower_sensor) | float) < (v_morning_thresh | float) }}
               # Startup/reload during morning window: resume recovery if overdrive is active
               - condition: and
                 conditions:
@@ -199,8 +199,8 @@ actions:
                   - condition: template
                     value_template: >-
                       {% set is_morning_window = today_at(v_morning_time) <= now() < today_at(v_solar_time) %}
-                      {% set cur_target = state_attr(v_heater, 'temperature') | float(0) %}
-                      {{ is_morning_window and cur_target > (v_evening_temp | float) }}
+                      {% set cur_target = state_attr(v_heater, 'temperature') %}
+                      {{ is_morning_window and has_value(v_heater) and cur_target is not none and (cur_target | float) > (v_evening_temp | float) }}
         sequence:
           # If scheduled morning boost, compute and apply overdrive target
           - if:
@@ -272,8 +272,8 @@ actions:
                   - condition: template
                     value_template: >-
                       {% set is_daytime_window = today_at(v_solar_time) <= now() < today_at(v_evening_time) %}
-                      {% set cur_target = state_attr(v_heater, 'temperature') | float(0) %}
-                      {{ is_daytime_window and cur_target < (v_cloudy_temp | float) }}
+                      {% set cur_target = state_attr(v_heater, 'temperature') %}
+                      {{ is_daytime_window and has_value(v_heater) and cur_target is not none and (cur_target | float) < (v_cloudy_temp | float) }}
         sequence:
           - choose:
               # High solar forecast
@@ -322,8 +322,8 @@ actions:
                   - condition: template
                     value_template: >-
                       {% set is_overnight = now() < today_at(v_morning_time) or now() >= today_at(v_evening_time) %}
-                      {% set cur_target = state_attr(v_heater, 'temperature') | float(0) %}
-                      {{ is_overnight and cur_target > (v_evening_temp | float) }}
+                      {% set cur_target = state_attr(v_heater, 'temperature') %}
+                      {{ is_overnight and has_value(v_heater) and cur_target is not none and (cur_target | float) > (v_evening_temp | float) }}
         sequence:
           - action: climate.set_temperature
             target:
