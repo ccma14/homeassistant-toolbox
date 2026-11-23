@@ -273,7 +273,7 @@ actions:
                     value_template: >-
                       {% set is_daytime_window = today_at(v_solar_time) <= now() < today_at(v_evening_time) %}
                       {% set cur_target = state_attr(v_heater, 'temperature') %}
-                      {{ is_daytime_window and has_value(v_heater) and cur_target is not none and (cur_target | float) < (v_cloudy_temp | float) }}
+                      {{ is_daytime_window and has_value(v_heater) and has_value(v_solar_sensor) and cur_target is not none and (cur_target | float) < (v_cloudy_temp | float) }}
         sequence:
           - choose:
               # High solar forecast

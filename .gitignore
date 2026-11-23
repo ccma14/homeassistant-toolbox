@@ -6,7 +6,5 @@ __pycache__/
 .pytest_cache/
 hpwh/tests/mock_config/packages/
 hpwh/tests/mock_config/blueprints/
-hpwh/tests/mock_config/.storage/
-hpwh/tests/mock_config/www/
 hpwh/tests/.tmp_*
 
